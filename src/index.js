@@ -53,51 +53,6 @@ const ctx = canvas.getContext("2d");
 
 // Disable anti-aliasing and image smoothing
 ctx.imageSmoothingEnabled = false;
-// Set a pixel-perfect monospace font
-ctx.font = "18px monospace";
-// Align text precisely to pixel boundaries
-ctx.textBaseline = "top";
-
-// 1. Define pixel-art bitmaps (1 = white dot, 0 = black)
-const ICONS = {
-  heart: [
-    [0, 1, 0, 1, 0],
-    [1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1],
-    [0, 1, 1, 1, 0],
-    [0, 0, 1, 0, 0],
-  ],
-  circle: [
-    [0, 1, 1, 1, 0],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [0, 1, 1, 1, 0],
-  ],
-  house: [
-    [0, 0, 1, 0, 0],
-    [0, 1, 1, 1, 0],
-    [1, 1, 1, 1, 1],
-    [0, 1, 1, 1, 0],
-    [0, 1, 0, 1, 0],
-  ],
-};
-
-// 2. Draw a bitmap at (x, y) with a given pixel size
-function drawBitmap(ctx, bitmap, x, y, pixelSize = 6) {
-  for (let row = 0; row < bitmap.length; row++) {
-    for (let col = 0; col < bitmap[row].length; col++) {
-      ctx.fillStyle = bitmap[row][col] ? "#fff" : "#000";
-      // Draw a smaller circle for each pixel to make them less thick
-      const centerX = x + col * pixelSize + pixelSize / 2;
-      const centerY = y + row * pixelSize + pixelSize / 2;
-      const radius = pixelSize * 0.4; // 80% of pixelSize, adjust as needed
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-      ctx.fill();
-    }
-  }
-}
 
 // Initialize the ticker at x frames per second
 const ticker = new Ticker({ fps: FPS });
@@ -106,7 +61,7 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   // Clear the console
   console.clear();
   console.time("Write frame");
-  console.log(`Rendering a ${width}x${height} canvas`);
+  console.log(`Rendering a ${width}x${height} flipdot billboard`);
   console.log("View at http://localhost:3000/view");
 
   ctx.clearRect(0, 0, width, height);
@@ -115,17 +70,34 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // Draw centered pixel-art emoji (cycles every 2 seconds)
-  {
-    const iconNames = Object.keys(ICONS);
-    const iconIndex = Math.floor((elapsedTime / 2000) % iconNames.length);
-    const icon = ICONS[iconNames[iconIndex]];
-    const pixelSize = 4;
-    const iconWidth = icon[0].length * pixelSize;
-    const iconHeight = icon.length * pixelSize;
-    const iconX = Math.floor((width - iconWidth) / 2);
-    const iconY = Math.floor((height - iconHeight) / 2);
-    drawBitmap(ctx, icon, iconX, iconY, pixelSize);
+  // Draw the LAYOUT as a grid of numbers
+  const rows = LAYOUT.length;
+  const cols = LAYOUT[0].length;
+  const cellWidth = width / cols;
+  const cellHeight = height / rows;
+
+  ctx.font = `${Math.floor(cellHeight * 0.5)}px monospace`;
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      // Draw cell background
+      ctx.fillStyle = "#222";
+      ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+
+      // Draw cell border
+      ctx.strokeStyle = "#888";
+      ctx.strokeRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+
+      // Draw number
+      ctx.fillStyle = "#fff";
+      ctx.fillText(
+        LAYOUT[y][x],
+        x * cellWidth + cellWidth / 2,
+        y * cellHeight + cellHeight / 2
+      );
+    }
   }
 
   // Convert image to binary (purely black and white) for flipdot display
@@ -157,7 +129,7 @@ ticker.start(({ deltaTime, elapsedTime }) => {
     }
   }
 
-  console.log(`Eslapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
+  console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
   console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
   console.timeEnd("Write frame");
 });
