@@ -69,6 +69,66 @@ function getBorderIndex(x, y, cols, rows) {
   return -1; // Not a border cell
 }
 
+// Define pixel-art bitmaps for "SALE" (5x7 font)
+const SALE_BITMAPS = [
+  // S
+  [
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [1,0,0,0,0],
+    [0,1,1,1,0],
+    [0,0,0,0,1],
+    [1,0,0,0,1],
+    [0,1,1,1,0],
+  ],
+  // A
+  [
+    [0,1,1,1,0],
+    [1,0,0,0,1],
+    [1,0,0,0,1],
+    [1,1,1,1,1],
+    [1,0,0,0,1],
+    [1,0,0,0,1],
+    [1,0,0,0,1],
+  ],
+  // L
+  [
+    [1,0,0,0,0],
+    [1,0,0,0,0],
+    [1,0,0,0,0],
+    [1,0,0,0,0],
+    [1,0,0,0,0],
+    [1,0,0,0,0],
+    [1,1,1,1,1],
+  ],
+  // E
+  [
+    [1,1,1,1,1],
+    [1,0,0,0,0],
+    [1,0,0,0,0],
+    [1,1,1,1,0],
+    [1,0,0,0,0],
+    [1,0,0,0,0],
+    [1,1,1,1,1],
+  ],
+];
+
+// Helper to draw a bitmap at (x, y) with a given pixel size
+function drawBitmap(ctx, bitmap, x, y, pixelSize = 6) {
+  for (let row = 0; row < bitmap.length; row++) {
+    for (let col = 0; col < bitmap[row].length; col++) {
+      ctx.fillStyle = bitmap[row][col] ? "#fff" : "#000";
+      // Draw a small circle for each pixel
+      const centerX = x + col * pixelSize + pixelSize / 2;
+      const centerY = y + row * pixelSize + pixelSize / 2;
+      const radius = pixelSize * 0.4;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+}
+
 ticker.start(({ deltaTime, elapsedTime }) => {
   // Clear the console
   console.clear();
@@ -129,24 +189,29 @@ for (let y = 0; y < rows; y++) {
       ctx.strokeRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
 
 
-// Draw number or SALE
-ctx.fillStyle = "#fff";
-if (y === 1) { // 2nd row, all columns
-  const sale = "SALE"; // Only 3 columns, so 3 letters
-  ctx.fillText(
-    sale[x] ?? "", // Show blank if out of bounds
-    x * cellWidth + cellWidth / 2,
-    y * cellHeight + cellHeight / 2
-  );
-} else {
-  ctx.fillText(
-    LAYOUT[y][x],
-    x * cellWidth + cellWidth / 2,
-    y * cellHeight + cellHeight / 2
-  );
-}
-   } 
-   }
+  // Draw "SALE" pixel-art centered on the grid
+  {
+    const pixelSize = Math.floor(Math.min(cellWidth, cellHeight) / 2.7);
+    const letterSpacing = 1;
+    const letterWidth = SALE_BITMAPS[0][0].length * pixelSize;
+    const letterHeight = SALE_BITMAPS[0].length * pixelSize;
+    const totalWidth = SALE_BITMAPS.length * letterWidth + (SALE_BITMAPS.length - 1) * letterSpacing * pixelSize;
+    const startX = Math.floor((width - totalWidth) / 2);
+    const startY = Math.floor((height - letterHeight) / 2);
+
+    for (let i = 0; i < SALE_BITMAPS.length; i++) {
+      drawBitmap(
+        ctx,
+        SALE_BITMAPS[i],
+        startX + i * (letterWidth + letterSpacing * pixelSize),
+        startY,
+        pixelSize
+      );
+    }
+  }
+}}
+
+   
  
 
   // Convert image to binary (purely black and white) for flipdot display
