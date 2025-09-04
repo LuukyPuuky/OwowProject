@@ -13,8 +13,3 @@
 	"devDependencies": {
 		"nodemon": "^3.1.10"
 	},
-	"dependencies": {
-		"canvas": "^3.1.0",
-		"@owowagency/flipdot-emu": "file:packages/owowagency-flipdot-emu-1.0.0.tgz"
-	}
-}
