@@ -51,55 +51,200 @@ registerFont(path.resolve(import.meta.dirname, "../fonts/Px437_ACM_VGA.ttf"), {
 const canvas = createCanvas(width, height);
 const ctx = canvas.getContext("2d");
 
-// Disable anti-aliasing and image smoothing
+// Disable anti-aliasing and image smoothing for crisp pixels
 ctx.imageSmoothingEnabled = false;
-// Set a pixel-perfect monospace font
-ctx.font = "18px monospace";
-// Align text precisely to pixel boundaries
-ctx.textBaseline = "top";
 
-// 1. Define pixel-art bitmaps (1 = white dot, 0 = black)
-const ICONS = {
-  heart: [
-    [0, 1, 0, 1, 0],
-    [1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1],
-    [0, 1, 1, 1, 0],
-    [0, 0, 1, 0, 0],
-  ],
-  circle: [
-    [0, 1, 1, 1, 0],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [0, 1, 1, 1, 0],
-  ],
-  house: [
-    [0, 0, 1, 0, 0],
-    [0, 1, 1, 1, 0],
-    [1, 1, 1, 1, 1],
-    [0, 1, 1, 1, 0],
-    [0, 1, 0, 1, 0],
-  ],
+// Coding quotes collection
+const CODING_QUOTES = [
+  {
+    text: "A good coder borrows, a great coder steals",
+    author: "- Anonymous",
+  },
+  {
+    text: "Code is like humor. When you have to explain it, it'    s bad",
+    author: "- Cory House",
+  },
+  {
+    text: "First, solve the problem. Then, write the code",
+    author: "- John Johnson",
+  },
+  {
+    text: "The best error message is the one that never shows up",
+    author: "- Thomas Fuchs",
+  },
+  {
+    text: "Any fool can write code that a computer can understand. Good programmers write code that humans can understand",
+    author: "- Martin Fowler",
+  },
+  {
+    text: "Talk is cheap. Show me the code",
+    author: "- Linus Torvalds",
+  },
+  {
+    text: "Code never lies, comments sometimes do",
+    author: "- Ron Jeffries",
+  },
+  {
+    text: "Programming is thinking, not typing",
+    author: "- Casey Patton",
+  },
+  {
+    text: "The only way to learn a new programming language is by writing programs in it",
+    author: "- Dennis Ritchie",
+  },
+  {
+    text: "Simplicity is the ultimate sophistication",
+    author: "- Leonardo da Vinci",
+  },
+];
+
+// Animation modes
+const ANIMATION_MODE = {
+  SCROLLING: "scrolling",
+  FADE_IN: "fade_in",
+  DISPLAY: "display",
+  FADE_OUT: "fade_out",
 };
 
-// 2. Draw a bitmap at (x, y) with a given pixel size
-function drawBitmap(ctx, bitmap, x, y, pixelSize = 6) {
-  for (let row = 0; row < bitmap.length; row++) {
-    for (let col = 0; col < bitmap[row].length; col++) {
-      ctx.fillStyle = bitmap[row][col] ? "#fff" : "#000";
-      // Draw a smaller circle for each pixel to make them less thick
-      const centerX = x + col * pixelSize + pixelSize / 2;
-      const centerY = y + row * pixelSize + pixelSize / 2;
-      const radius = pixelSize * 0.4; // 80% of pixelSize, adjust as needed
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-      ctx.fill();
-    }
-  }
+// Animation configuration
+const SCROLL_SPEED = 1000; // Pixels per second
+const FADE_DURATION = 800; // Milliseconds for fade in/out
+const DISPLAY_DURATION = 4000; // Milliseconds to display quote after fade-in
+const PAUSE_AFTER_SCROLL_DURATION = 1500; // Milliseconds to pause after scroll
+
+let currentQuoteIndex = 0;
+let currentAnimationMode = ANIMATION_MODE.SCROLLING;
+let modeStartTime = 0; // Timestamp when the current animation mode started
+let scrollOffset = width; // Start off-screen to the right
+
+// Function to render scrolling text
+function renderScrollingText(quote, offset) {
+  ctx.font = "12px PPNeueMontreal";
+  ctx.fillStyle = "#fff";
+  const text = `${quote.text} ${quote.author}`;
+  const textMetrics = ctx.measureText(text);
+  const textWidth = textMetrics.width;
+  const y = height / 2 - 6; // Adjust Y position for vertical centering
+
+  ctx.fillText(text, offset, y);
+  return textWidth;
 }
 
-// Initialize the ticker at x frames per second
+// Text wrapping function
+function wrapText(text, maxWidth, fontSize) {
+  ctx.font = `${fontSize}px PPNeueMontreal`;
+  const words = text.split(" ");
+  const lines = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const testLine = currentLine + (currentLine ? " " : "") + word;
+    const testWidth = ctx.measureText(testLine).width;
+
+    if (testWidth <= maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        // Word is too long, force it on its own line
+        lines.push(word);
+      }
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+// Function to render text with fade effect
+function renderQuoteWithFade(quote, fadeOpacity) {
+  const margin = 8;
+  const maxTextWidth = width - margin * 2;
+
+  // Try different font sizes to find the best fit
+  let fontSize = 10;
+  let lines = [];
+  let authorLines = [];
+
+  // Find optimal font size for quote text
+  for (let size = 14; size >= 8; size--) {
+    lines = wrapText(quote.text, maxTextWidth, size);
+    authorLines = wrapText(quote.author, maxTextWidth, Math.max(6, size - 2));
+
+    const totalHeight =
+      lines.length * size * 1.2 + authorLines.length * (size - 2) * 1.2 + 8;
+    if (totalHeight <= height - margin * 2) {
+      fontSize = size;
+      break;
+    }
+  }
+
+  const lineHeight = fontSize * 1.2;
+  const authorFontSize = Math.max(6, fontSize - 2);
+  const authorLineHeight = authorFontSize * 1.2;
+
+  const totalTextHeight =
+    lines.length * lineHeight + authorLines.length * authorLineHeight + 8;
+  const startY = margin + (height - totalTextHeight) / 2;
+
+  // Create a temporary canvas for fade effect
+  const tempCanvas = createCanvas(width, height);
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.imageSmoothingEnabled = false;
+
+  // Render quote text
+  tempCtx.fillStyle = "#fff";
+  tempCtx.font = `${fontSize}px PPNeueMontreal`;
+  tempCtx.textBaseline = "top";
+
+  lines.forEach((line, index) => {
+    const textWidth = tempCtx.measureText(line).width;
+    const x = (width - textWidth) / 2;
+    const y = startY + index * lineHeight;
+    tempCtx.fillText(line, x, y);
+  });
+
+  // Render author text
+  tempCtx.font = `${authorFontSize}px PPNeueMontreal`;
+  const authorStartY = startY + lines.length * lineHeight + 8;
+
+  authorLines.forEach((line, index) => {
+    const textWidth = tempCtx.measureText(line).width;
+    const x = (width - textWidth) / 2;
+    const y = authorStartY + index * authorLineHeight;
+    tempCtx.fillText(line, x, y);
+  });
+
+  // Apply fade effect by manipulating pixel data
+  if (fadeOpacity < 1) {
+    const imageData = tempCtx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i] > 0) {
+        // If pixel is white
+        // Apply random dither based on opacity
+        const shouldKeep = Math.random() < fadeOpacity;
+        if (!shouldKeep) {
+          data[i] = 0; // R
+          data[i + 1] = 0; // G
+          data[i + 2] = 0; // B
+        }
+      }
+    }
+    tempCtx.putImageData(imageData, 0, 0);
+  }
+
+  // Draw the temporary canvas onto the main canvas
+  ctx.drawImage(tempCanvas, 0, 0);
+}
+
+// Initialize the ticker
 const ticker = new Ticker({ fps: FPS });
 
 ticker.start(({ deltaTime, elapsedTime }) => {
@@ -109,55 +254,112 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   console.log(`Rendering a ${width}x${height} canvas`);
   console.log("View at http://localhost:3000/view");
 
-  ctx.clearRect(0, 0, width, height);
-
-  // Fill the canvas with a black background
+  // Clear canvas
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // Draw centered pixel-art emoji (cycles every 2 seconds)
-  {
-    const iconNames = Object.keys(ICONS);
-    const iconIndex = Math.floor((elapsedTime / 2000) % iconNames.length);
-    const icon = ICONS[iconNames[iconIndex]];
-    const pixelSize = 4;
-    const iconWidth = icon[0].length * pixelSize;
-    const iconHeight = icon.length * pixelSize;
-    const iconX = Math.floor((width - iconWidth) / 2);
-    const iconY = Math.floor((height - iconHeight) / 2);
-    drawBitmap(ctx, icon, iconX, iconY, pixelSize);
-  }
+  const currentQuote = CODING_QUOTES[currentQuoteIndex];
+  const timeInCurrentMode = elapsedTime - modeStartTime;
 
-  // Convert image to binary (purely black and white) for flipdot display
-  {
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      // Apply thresholding - any pixel above 127 brightness becomes white (255), otherwise black (0)
-      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      const binary = brightness > 127 ? 255 : 0;
-      data[i] = binary; // R
-      data[i + 1] = binary; // G
-      data[i + 2] = binary; // B
-      data[i + 3] = 255; // The board is not transparent :-)
+  switch (currentAnimationMode) {
+    case ANIMATION_MODE.SCROLLING: {
+      scrollOffset -= SCROLL_SPEED * (deltaTime / 1000); // Convert speed to pixels per millisecond
+      const textWidth = renderScrollingText(currentQuote, scrollOffset);
+
+      // Check if text has completely scrolled off screen
+      if (scrollOffset < -textWidth) {
+        // Pause after scrolling
+        currentAnimationMode = ANIMATION_MODE.PAUSE_AFTER_SCROLL;
+        modeStartTime = elapsedTime;
+      }
+      break;
     }
-    ctx.putImageData(imageData, 0, 0);
+
+    case ANIMATION_MODE.PAUSE_AFTER_SCROLL: {
+      // Keep the screen blank or show the last frame of the scroll
+      // For now, let's just show the last visible part of the scroll, or blank if it's off-screen
+      // A more robust solution might show a static image during pause.
+      if (timeInCurrentMode >= PAUSE_AFTER_SCROLL_DURATION) {
+        currentAnimationMode = ANIMATION_MODE.FADE_IN;
+        modeStartTime = elapsedTime;
+      }
+      break;
+    }
+
+    case ANIMATION_MODE.FADE_IN: {
+      let fadeProgress = timeInCurrentMode / FADE_DURATION;
+      if (fadeProgress >= 1) {
+        fadeProgress = 1;
+        currentAnimationMode = ANIMATION_MODE.DISPLAY;
+        modeStartTime = elapsedTime;
+      }
+      renderQuoteWithFade(currentQuote, fadeProgress);
+      break;
+    }
+
+    case ANIMATION_MODE.DISPLAY: {
+      if (timeInCurrentMode >= DISPLAY_DURATION) {
+        currentAnimationMode = ANIMATION_MODE.FADE_OUT;
+        modeStartTime = elapsedTime;
+      }
+      renderQuoteWithFade(currentQuote, 1); // Fully opaque during display
+      break;
+    }
+
+    case ANIMATION_MODE.FADE_OUT: {
+      let fadeProgress = 1 - timeInCurrentMode / FADE_DURATION;
+      if (fadeProgress <= 0) {
+        fadeProgress = 0;
+        // Move to next quote and restart scrolling
+        currentQuoteIndex = (currentQuoteIndex + 1) % CODING_QUOTES.length;
+        currentAnimationMode = ANIMATION_MODE.SCROLLING;
+        modeStartTime = elapsedTime;
+        scrollOffset = width; // Reset scroll position for the new quote
+      }
+      renderQuoteWithFade(currentQuote, fadeProgress);
+      break;
+    }
   }
 
+  // Convert to binary for flipdot display
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const binary = brightness > 127 ? 255 : 0;
+    data[i] = binary; // R
+    data[i + 1] = binary; // G
+    data[i + 2] = binary; // B
+    data[i + 3] = 255; // A
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  // Output to file or display
   if (IS_DEV) {
-    // Save the canvas as a PNG file
     const filename = path.join(outputDir, "frame.png");
     const buffer = canvas.toBuffer("image/png");
     fs.writeFileSync(filename, buffer);
   } else {
-    const imageData = ctx.getImageData(0, 0, display.width, display.height);
-    display.setImageData(imageData);
+    const displayImageData = ctx.getImageData(
+      0,
+      0,
+      display.width,
+      display.height
+    );
+    display.setImageData(displayImageData);
     if (display.isDirty()) {
       display.flush();
     }
   }
 
-  console.log(`Eslapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
+  console.log(`Current Quote: "${currentQuote.text}"`);
+  console.log(`Animation Mode: ${currentAnimationMode}`);
+  console.log(`Scroll Offset: ${scrollOffset.toFixed(1)}`);
+  console.log(`Quote ${currentQuoteIndex + 1}/${CODING_QUOTES.length}`);
+  console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
+  console.log(`Time in mode: ${(timeInCurrentMode / 1000).toFixed(2)}s`);
   console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
   console.timeEnd("Write frame");
 });
