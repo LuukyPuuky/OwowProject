@@ -128,15 +128,26 @@ for (let y = 0; y < rows; y++) {
       ctx.strokeStyle = "#888";
       ctx.strokeRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
 
-      // Draw number
-      ctx.fillStyle = "#fff";
-      ctx.fillText(
-        LAYOUT[y][x],
-        x * cellWidth + cellWidth / 2,
-        y * cellHeight + cellHeight / 2
-      );
-    }
-  }
+
+// Draw number or SALE
+ctx.fillStyle = "#fff";
+if (y === 1) { // 2nd row, all columns
+  const sale = "SAL"; // Only 3 columns, so 3 letters
+  ctx.fillText(
+    sale[x] ?? "", // Show blank if out of bounds
+    x * cellWidth + cellWidth / 2,
+    y * cellHeight + cellHeight / 2
+  );
+} else {
+  ctx.fillText(
+    LAYOUT[y][x],
+    x * cellWidth + cellWidth / 2,
+    y * cellHeight + cellHeight / 2
+  );
+}
+   } 
+   }
+ 
 
   // Convert image to binary (purely black and white) for flipdot display
   {
@@ -149,7 +160,7 @@ for (let y = 0; y < rows; y++) {
       data[i] = binary; // R
       data[i + 1] = binary; // G
       data[i + 2] = binary; // B
-      data[i + 3] = 255; // The board is not transparent :-)
+      data[i + 3] = 255; // The board is not transparent 
     }
     ctx.putImageData(imageData, 0, 0);
   }
