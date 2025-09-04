@@ -168,22 +168,25 @@ for (let y = 0; y < rows; y++) {
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
 
    // Draw multiple moving lights
+   const fixedBorderIndices = [0, cols - 1, cols + rows - 2, 2 * cols + rows - 3];
+const blinkOn = Math.floor(frameCount / 10) % 2 === 0; // Adjust 15 for blink speed
+
 const numDots = 9;
 for (let d = 0; d < numDots; d++) {
-  if (borderIdx === (litIndex + d) % borderLength) {
-    ctx.save();
-    ctx.fillStyle = "#ff0";
-    ctx.beginPath();
-    ctx.arc(
-      x * cellWidth + cellWidth / 2,
-      y * cellHeight + cellHeight / 2,
-      Math.min(cellWidth, cellHeight) * 0.2,
-      0,
-      2 * Math.PI
-    );
-    ctx.fill();
-    ctx.restore();
-  }
+ if (fixedBorderIndices.includes(borderIdx) && blinkOn) {
+  ctx.save();
+  ctx.fillStyle = "#ff0";
+  ctx.beginPath();
+  ctx.arc(
+    x * cellWidth + cellWidth / 2,
+    y * cellHeight + cellHeight / 2,
+    Math.min(cellWidth, cellHeight) * 0.3,
+    0,
+    2 * Math.PI
+  );
+  ctx.fill();
+  ctx.restore();
+}
 }
 
       // Draw cell border
