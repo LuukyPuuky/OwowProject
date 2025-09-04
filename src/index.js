@@ -57,6 +57,17 @@ ctx.imageSmoothingEnabled = false;
 // Initialize the ticker at x frames per second
 const ticker = new Ticker({ fps: FPS });
 
+let frameCount = 0; // For animation
+
+// Helper to get the border index for a cell, or -1 if not on border
+function getBorderIndex(x, y, cols, rows) {
+  if (y === 0) return x; // Top row, left to right
+  if (x === cols - 1) return cols - 1 + y; // Right column, top to bottom
+  if (y === rows - 1) return cols - 1 + rows - 1 + (cols - 1 - x); // Bottom row, right to left
+  if (x === 0) return cols - 1 + rows - 1 + cols - 1 + (rows - 1 - y); // Left column, bottom to top
+  return -1; // Not a border cell
+}
+
 ticker.start(({ deltaTime, elapsedTime }) => {
   // Clear the console
   console.clear();
@@ -70,7 +81,7 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // Draw the LAYOUT as a grid of numbers
+  // Draw the LAYOUT as a grid of numbers with moving border lights
   const rows = LAYOUT.length;
   const cols = LAYOUT[0].length;
   const cellWidth = width / cols;
@@ -80,10 +91,21 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
 
+  // Calculate which border cell should be "lit"
+  const borderLength = 2 * (rows + cols) - 4;
+  const litIndex = frameCount % borderLength;
+
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      // Draw cell background
-      ctx.fillStyle = "#222";
+      // Determine if this cell is on the border and should be "lit"
+      const borderIdx = getBorderIndex(x, y, cols, rows);
+      if (borderIdx === litIndex) {
+        ctx.fillStyle = "#ff0"; // Bright yellow for the moving light
+      } else if (borderIdx !== -1) {
+        ctx.fillStyle = "#444"; // Dim border
+      } else {
+        ctx.fillStyle = "#222"; // Normal cell background
+      }
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
 
       // Draw cell border
@@ -129,7 +151,9 @@ ticker.start(({ deltaTime, elapsedTime }) => {
     }
   }
 
-  console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
+  frameCount++; // Increment frame for animation
+
+console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
   console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
   console.timeEnd("Write frame");
 });
