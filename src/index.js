@@ -132,7 +132,7 @@ for (let y = 0; y < rows; y++) {
 // Draw number or SALE
 ctx.fillStyle = "#fff";
 if (y === 1) { // 2nd row, all columns
-  const sale = "SAL"; // Only 3 columns, so 3 letters
+  const sale = "SALE"; // Only 3 columns, so 3 letters
   ctx.fillText(
     sale[x] ?? "", // Show blank if out of bounds
     x * cellWidth + cellWidth / 2,
