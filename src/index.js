@@ -167,22 +167,24 @@ for (let y = 0; y < rows; y++) {
       }
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
 
-      // Draw small moving light
-      if (borderIdx === litIndex) {
-        ctx.save();
-        ctx.fillStyle = "#ff0";
-        // Draw a small circle in the center of the cell
-        ctx.beginPath();
-        ctx.arc(
-          x * cellWidth + cellWidth / 2,
-          y * cellHeight + cellHeight / 2,
-          Math.min(cellWidth, cellHeight) * 0.2, // 20% of cell size
-          0,
-          2 * Math.PI
-        );
-        ctx.fill();
-        ctx.restore();
-      }
+   // Draw multiple moving lights
+const numDots = 9;
+for (let d = 0; d < numDots; d++) {
+  if (borderIdx === (litIndex + d) % borderLength) {
+    ctx.save();
+    ctx.fillStyle = "#ff0";
+    ctx.beginPath();
+    ctx.arc(
+      x * cellWidth + cellWidth / 2,
+      y * cellHeight + cellHeight / 2,
+      Math.min(cellWidth, cellHeight) * 0.2,
+      0,
+      2 * Math.PI
+    );
+    ctx.fill();
+    ctx.restore();
+  }
+}
 
       // Draw cell border
       ctx.strokeStyle = "#888";
