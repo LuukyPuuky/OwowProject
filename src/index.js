@@ -58,6 +58,7 @@ ctx.imageSmoothingEnabled = false;
 const ticker = new Ticker({ fps: FPS });
 
 let frameCount = 0; // For animation
+let slowFrame = 0;  // For slower movement
 
 // Helper to get the border index for a cell, or -1 if not on border
 function getBorderIndex(x, y, cols, rows) {
@@ -93,20 +94,35 @@ ticker.start(({ deltaTime, elapsedTime }) => {
 
   // Calculate which border cell should be "lit"
   const borderLength = 2 * (rows + cols) - 4;
-  const litIndex = frameCount % borderLength;
+  const litIndex = Math.floor(slowFrame / 4) % borderLength; // Move 4x slower
 
-  for (let y = 0; y < rows; y++) {
+for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      // Determine if this cell is on the border and should be "lit"
       const borderIdx = getBorderIndex(x, y, cols, rows);
-      if (borderIdx === litIndex) {
-        ctx.fillStyle = "#ff0"; // Bright yellow for the moving light
-      } else if (borderIdx !== -1) {
+      // Draw cell background
+      if (borderIdx !== -1) {
         ctx.fillStyle = "#444"; // Dim border
       } else {
         ctx.fillStyle = "#222"; // Normal cell background
       }
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+
+      // Draw small moving light
+      if (borderIdx === litIndex) {
+        ctx.save();
+        ctx.fillStyle = "#ff0";
+        // Draw a small circle in the center of the cell
+        ctx.beginPath();
+        ctx.arc(
+          x * cellWidth + cellWidth / 2,
+          y * cellHeight + cellHeight / 2,
+          Math.min(cellWidth, cellHeight) * 0.2, // 20% of cell size
+          0,
+          2 * Math.PI
+        );
+        ctx.fill();
+        ctx.restore();
+      }
 
       // Draw cell border
       ctx.strokeStyle = "#888";
@@ -152,6 +168,7 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   }
 
   frameCount++; // Increment frame for animation
+slowFrame++; // Increment for slower movement
 
 console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
   console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
