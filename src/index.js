@@ -56,46 +56,20 @@ ctx.imageSmoothingEnabled = false;
 
 // Coding quotes collection
 const CODING_QUOTES = [
-  {
-    text: "A good coder borrows, a great coder steals",
-    author: "- Anonymous",
-  },
-  {
-    text: "Code is like humor. When you have to explain it, it'    s bad",
-    author: "- Cory House",
-  },
-  {
-    text: "First, solve the problem. Then, write the code",
-    author: "- John Johnson",
-  },
-  {
-    text: "The best error message is the one that never shows up",
-    author: "- Thomas Fuchs",
-  },
+  { text: "A good coder borrows, a great coder steals" },
+  { text: "Code is like humor. When you have to explain it, it's bad" },
+  { text: "First, solve the problem. Then, write the code" },
+  { text: "The best error message is the one that never shows up" },
   {
     text: "Any fool can write code that a computer can understand. Good programmers write code that humans can understand",
-    author: "- Martin Fowler",
   },
-  {
-    text: "Talk is cheap. Show me the code",
-    author: "- Linus Torvalds",
-  },
-  {
-    text: "Code never lies, comments sometimes do",
-    author: "- Ron Jeffries",
-  },
-  {
-    text: "Programming is thinking, not typing",
-    author: "- Casey Patton",
-  },
+  { text: "Talk is cheap. Show me the code" },
+  { text: "Code never lies, comments sometimes do" },
+  { text: "Programming is thinking, not typing" },
   {
     text: "The only way to learn a new programming language is by writing programs in it",
-    author: "- Dennis Ritchie",
   },
-  {
-    text: "Simplicity is the ultimate sophistication",
-    author: "- Leonardo da Vinci",
-  },
+  { text: "Simplicity is the ultimate sophistication" },
 ];
 
 // Animation modes
@@ -108,8 +82,8 @@ const ANIMATION_MODE = {
 
 // Animation configuration
 const SCROLL_SPEED = 1000; // Pixels per second
-const FADE_DURATION = 800; // Milliseconds for fade in/out
-const DISPLAY_DURATION = 4000; // Milliseconds to display quote after fade-in
+const FADE_DURATION = 100; // Milliseconds for fade in/out
+const DISPLAY_DURATION = 1000; // Milliseconds to display quote after fade-in
 const PAUSE_AFTER_SCROLL_DURATION = 1500; // Milliseconds to pause after scroll
 
 let currentQuoteIndex = 0;
@@ -121,7 +95,7 @@ let scrollOffset = width; // Start off-screen to the right
 function renderScrollingText(quote, offset) {
   ctx.font = "12px PPNeueMontreal";
   ctx.fillStyle = "#fff";
-  const text = `${quote.text} ${quote.author}`;
+  const text = `${quote.text}`;
   const textMetrics = ctx.measureText(text);
   const textWidth = textMetrics.width;
   const y = height / 2 - 6; // Adjust Y position for vertical centering
@@ -169,15 +143,11 @@ function renderQuoteWithFade(quote, fadeOpacity) {
   // Try different font sizes to find the best fit
   let fontSize = 10;
   let lines = [];
-  let authorLines = [];
 
   // Find optimal font size for quote text
   for (let size = 14; size >= 8; size--) {
     lines = wrapText(quote.text, maxTextWidth, size);
-    authorLines = wrapText(quote.author, maxTextWidth, Math.max(6, size - 2));
-
-    const totalHeight =
-      lines.length * size * 1.2 + authorLines.length * (size - 2) * 1.2 + 8;
+    const totalHeight = lines.length * size * 1.2 + 8;
     if (totalHeight <= height - margin * 2) {
       fontSize = size;
       break;
@@ -185,11 +155,7 @@ function renderQuoteWithFade(quote, fadeOpacity) {
   }
 
   const lineHeight = fontSize * 1.2;
-  const authorFontSize = Math.max(6, fontSize - 2);
-  const authorLineHeight = authorFontSize * 1.2;
-
-  const totalTextHeight =
-    lines.length * lineHeight + authorLines.length * authorLineHeight + 8;
+  const totalTextHeight = lines.length * lineHeight + 8;
   const startY = margin + (height - totalTextHeight) / 2;
 
   // Create a temporary canvas for fade effect
@@ -206,17 +172,6 @@ function renderQuoteWithFade(quote, fadeOpacity) {
     const textWidth = tempCtx.measureText(line).width;
     const x = (width - textWidth) / 2;
     const y = startY + index * lineHeight;
-    tempCtx.fillText(line, x, y);
-  });
-
-  // Render author text
-  tempCtx.font = `${authorFontSize}px PPNeueMontreal`;
-  const authorStartY = startY + lines.length * lineHeight + 8;
-
-  authorLines.forEach((line, index) => {
-    const textWidth = tempCtx.measureText(line).width;
-    const x = (width - textWidth) / 2;
-    const y = authorStartY + index * authorLineHeight;
     tempCtx.fillText(line, x, y);
   });
 
