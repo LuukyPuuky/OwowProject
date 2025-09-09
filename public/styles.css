@@ -1,0 +1,14 @@
+*{box-sizing:border-box}html,body{margin:0;background:#fff;color:#000;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+.wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px}
+.screen{background:#000;border-radius:6px;padding:6px 10px;border:1px solid #bbb}
+.matrix{display:grid;grid-template-columns:repeat(32,6px);grid-auto-rows:6px;gap:2px}
+.dot{width:6px;height:6px;border-radius:50%;background:#222}
+.on{background:#fff}
+.panel{text-align:center}
+.row{display:flex;gap:8px;justify-content:center}
+.btn{background:#fff;border:1px solid #000;border-radius:6px;padding:6px 10px;cursor:pointer;font-weight:700}
+.muted{color:#6b7280}
+.tiny{font-size:12px;margin-top:4px}
+
+.matrix.twinkle .on{animation:tw .14s ease-in-out}
+@keyframes tw{0%{opacity:.4}50%{opacity:1}100%{opacity:.4}}
