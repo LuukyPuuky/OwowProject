@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Emoji Mood Flipboard</title>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 250px auto;
+      gap: 40px;
+      align-items: start;
+    }
+    .voting {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    .voting h2 {
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .voting button {
+      padding: 15px;
+      font-size: 18px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.3s;
+    }
+    .voting button:hover {
+      transform: scale(1.05);
+    }
+    .btn-smile { background: #ffda6a; }
+    .btn-sad { background: #6ac0ff; }
+    .btn-heart { background: #ff6a89; }
+    .btn-fire { background: #ff944d; }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(84, 8px);
+      grid-template-rows: repeat(28, 8px);
+      gap: 1px;
+      margin-top: 10px;
+    }
+    .pixel {
+      width: 8px;
+      height: 8px;
+      background: #222;
+      border-radius: 50%;
+      transition: background 0.15s;
+    }
+    .on {
+      background: #FFD700;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="voting">
+      <h2>Vote Mood</h2>
+      <button class="btn-smile" onclick="showEmoji('smile')">😊 Happy</button>
+      <button class="btn-sad" onclick="showEmoji('sad')">😢 Sad</button>
+      <button class="btn-heart" onclick="showEmoji('heart')">❤️ Love</button>
+      <button class="btn-fire" onclick="showEmoji('fire')">🔥 Hype</button>
+    </div>
+    <div>
+      <h2 style="text-align:center">Mood Board</h2>
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+
+  <script>
+    const width = 84;
+    const height = 28;
+    const board = document.getElementById("board");
+    const pixels = [];
+
+    // Create the grid
+    for (let i = 0; i < width * height; i++) {
+      const pixel = document.createElement("div");
+      pixel.classList.add("pixel");
+      board.appendChild(pixel);
+      pixels.push(pixel);
+    }
+
+    function clearBoard() {
+      pixels.forEach(p => p.classList.remove("on"));
+    }
+
+    function setPixel(x, y) {
+      if (x >= 0 && x < width && y >= 0 && y < height) {
+        pixels[y*width + x].classList.add("on");
+      }
+    }
+
+    // Helper for circles
+    function drawCircle(cx, cy, r) {
+      for (let y = -r; y <= r; y++) {
+        for (let x = -r; x <= r; x++) {
+          if (x*x + y*y <= r*r) {
+            setPixel(cx+x, cy+y);
+          }
+        }
+      }
+    }
+
+    // Animated emoji patterns
+    let animationInterval;
+
+    function showEmoji(type) {
+      clearBoard();
+      if (animationInterval) clearInterval(animationInterval);
+
+      if (type === "smile") {
+        // Draw face outline
+        drawCircle(42, 14, 12);
+
+        // Draw eyes (larger and more expressive)
+        for (let dx = -2; dx <= 2; dx++) {
+          for (let dy = -2; dy <= 2; dy++) {
+            if (dx*dx + dy*dy <= 4) {
+              setPixel(36 + dx, 11 + dy); // left eye
+              setPixel(48 + dx, 11 + dy); // right eye
+            }
+          }
+        }
+
+        // Draw eyebrows
+        for (let dx = -2; dx <= 2; dx++) {
+          setPixel(36 + dx, 8); // left brow
+          setPixel(48 + dx, 8); // right brow
+        }
+
+        // Draw smiling mouth (arc, thicker)
+        for (let a = Math.PI * 0.25; a < Math.PI * 0.75; a += 0.07) {
+          const x = Math.round(42 + 6 * Math.cos(a));
+          const y = Math.round(19 + 4 * Math.sin(a));
+          setPixel(x, y);
+          setPixel(x, y + 1);
+        }
+
+        // Add cheeks
+        setPixel(34, 17);
+        setPixel(50, 17);
+        setPixel(35, 17);
+        setPixel(49, 17);
+
+        // Optional: animate a wink
+        let wink = false;
+        animationInterval = setInterval(() => {
+          // Toggle wink every 600ms
+          wink = !wink;
+          for (let dx = -2; dx <= 2; dx++) {
+            for (let dy = -2; dy <= 2; dy++) {
+              if (dx*dx + dy*dy <= 4) {
+                // Clear right eye
+                pixels[(11 + dy)*width + (48 + dx)].classList.remove("on");
+              }
+            }
+          }
+          if (wink) {
+            // Draw wink (horizontal line)
+            for (let dx = -2; dx <= 2; dx++) {
+              setPixel(48 + dx, 13);
+            }
+          } else {
+            // Draw normal right eye
+            for (let dx = -2; dx <= 2; dx++) {
+              for (let dy = -2; dy <= 2; dy++) {
+                if (dx*dx + dy*dy <= 4) {
+                  setPixel(48 + dx, 11 + dy);
+                }
+              }
+            }
+          }
+        }, 600);
+      }
+
+      if (type === "sad") {
+        drawCircle(42, 14, 12);
+        drawCircle(36, 12, 2);
+        drawCircle(48, 12, 2);
+        // frown animation
+        let phase = 0;
+        animationInterval = setInterval(() => {
+          for (let a = Math.PI; a < 2*Math.PI; a += 0.05) {
+            const x = Math.round(42 + 6 * Math.cos(a));
+            const y = Math.round(18 + 4 * Math.sin(a + phase));
+            setPixel(x, y);
+          }
+          phase += 0.1;
+        }, 150);
+      }
+
+      if (type === "heart") {
+        function drawHeart(scale=1) {
+          for (let y = -8; y <= 6; y++) {
+            for (let x = -8; x <= 8; x++) {
+              if ((x*x + y*y <= 16*scale && y < 0) || (Math.abs(x) + y <= 8*scale && y >= 0)) {
+                setPixel(42+x, 14+y);
+              }
+            }
+          }
+        }
+        let grow = true;
+        let scale = 1;
+        animationInterval = setInterval(() => {
+          clearBoard();
+          drawHeart(scale);
+          scale += grow ? 0.1 : -0.1;
+          if (scale >= 1.3) grow = false;
+          if (scale <= 1) grow = true;
+        }, 150);
+      }
+
+      if (type === "fire") {
+        animationInterval = setInterval(() => {
+          clearBoard();
+          for (let i = 0; i < 250; i++) {
+            const x = 30 + Math.floor(Math.random()*24);
+            const y = 8 + Math.floor(Math.random()*14);
+            setPixel(x, y);
+          }
+        }, 120);
+      }
+    }
+  </script>
+</body>
+</html>
