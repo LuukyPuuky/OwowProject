@@ -98,8 +98,10 @@ function renderScrollingText(quote, offset) {
   const text = `${quote.text}`;
   const textMetrics = ctx.measureText(text);
   const textWidth = textMetrics.width;
-  const y = height / 2 - 6; // Adjust Y position for vertical centering
-
+  const fontSize = 12;
+  ctx.textBaseline = "middle";
+  // Center text vertically
+  const y = height / 2;
   ctx.fillText(text, offset, y);
   return textWidth;
 }
@@ -156,7 +158,8 @@ function renderQuoteWithFade(quote, fadeOpacity) {
 
   const lineHeight = fontSize * 1.2;
   const totalTextHeight = lines.length * lineHeight + 8;
-  const startY = margin + (height - totalTextHeight) / 2;
+  // Center block of text vertically
+  const startY = (height - totalTextHeight) / 2;
 
   // Create a temporary canvas for fade effect
   const tempCanvas = createCanvas(width, height);
@@ -166,12 +169,13 @@ function renderQuoteWithFade(quote, fadeOpacity) {
   // Render quote text
   tempCtx.fillStyle = "#fff";
   tempCtx.font = `${fontSize}px PPNeueMontreal`;
-  tempCtx.textBaseline = "top";
+  tempCtx.textBaseline = "middle";
 
   lines.forEach((line, index) => {
     const textWidth = tempCtx.measureText(line).width;
     const x = (width - textWidth) / 2;
-    const y = startY + index * lineHeight;
+    // Center each line in the block
+    const y = startY + index * lineHeight + lineHeight / 2;
     tempCtx.fillText(line, x, y);
   });
 
