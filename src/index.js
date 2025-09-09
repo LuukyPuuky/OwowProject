@@ -142,7 +142,7 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // Draw the LAYOUT as a grid of numbers with moving border lights
+  // Grid setup
   const rows = LAYOUT.length;
   const cols = LAYOUT[0].length;
   const cellWidth = width / cols;
@@ -152,58 +152,69 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
 
-  // Calculate which border cell should be "lit"
-  const borderLength = 2 * (rows + cols) - 4;
-  const litIndex = Math.floor(slowFrame / 4) % borderLength; // Move 4x slower
+  // Calculate "SALE" pixel-art position and bounding box
+  const pixelSize = Math.floor(Math.min(cellWidth, cellHeight) / 2.7);
+  const letterSpacing = 1;
+  const letterWidth = SALE_BITMAPS[0][0].length * pixelSize;
+  const letterHeight = SALE_BITMAPS[0].length * pixelSize;
+  const totalWidth = SALE_BITMAPS.length * letterWidth + (SALE_BITMAPS.length - 1) * letterSpacing * pixelSize;
+  const startX = Math.floor((width - totalWidth) / 2);
+  const startY = Math.floor((height - letterHeight) / 2);
 
-for (let y = 0; y < rows; y++) {
+  // Find border cells near the "SALE" box
+  const saleBorderIndices = [];
+  const margin = pixelSize * 2; // How close to the edge of "SALE" to count as "around"
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const cx = x * cellWidth + cellWidth / 2;
+      const cy = y * cellHeight + cellHeight / 2;
+      const nearLeft = Math.abs(cx - startX) < margin;
+      const nearRight = Math.abs(cx - (startX + totalWidth)) < margin;
+      const nearTop = Math.abs(cy - startY) < margin;
+      const nearBottom = Math.abs(cy - (startY + letterHeight)) < margin;
+      if (nearLeft || nearRight || nearTop || nearBottom) {
+        const borderIdx = getBorderIndex(x, y, cols, rows);
+        if (borderIdx !== -1) saleBorderIndices.push(borderIdx);
+      }
+    }
+  }
+
+  // Blinking setup
+  const blinkOn = Math.floor(frameCount / 10) % 2 === 0; // Adjust for blink speed
+
+  // Draw grid and blinking dots around "SALE"
+  for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const borderIdx = getBorderIndex(x, y, cols, rows);
-      // Draw cell background
-      if (borderIdx !== -1) {
-        ctx.fillStyle = "#444"; // Dim border
-      } else {
-        ctx.fillStyle = "#222"; // Normal cell background
-      }
+
+      // Cell background
+      ctx.fillStyle = borderIdx !== -1 ? "#444" : "#222";
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
 
-   // Draw multiple moving lights
-   const fixedBorderIndices = [0, cols - 1, cols + rows - 2, 2 * cols + rows - 3];
-const blinkOn = Math.floor(frameCount / 10) % 2 === 0; // Adjust 15 for blink speed
+      // Blinking dots around SALE
+      if (saleBorderIndices.includes(borderIdx) && blinkOn) {
+        ctx.save();
+        ctx.fillStyle = "#ff0";
+        ctx.beginPath();
+        ctx.arc(
+          x * cellWidth + cellWidth / 2,
+          y * cellHeight + cellHeight / 2,
+          Math.min(cellWidth, cellHeight) * 0.3,
+          0,
+          2 * Math.PI
+        );
+        ctx.fill();
+        ctx.restore();
+      }
 
-const numDots = 9;
-for (let d = 0; d < numDots; d++) {
- if (fixedBorderIndices.includes(borderIdx) && blinkOn) {
-  ctx.save();
-  ctx.fillStyle = "#ff0";
-  ctx.beginPath();
-  ctx.arc(
-    x * cellWidth + cellWidth / 2,
-    y * cellHeight + cellHeight / 2,
-    Math.min(cellWidth, cellHeight) * 0.3,
-    0,
-    2 * Math.PI
-  );
-  ctx.fill();
-  ctx.restore();
-}
-}
-
-      // Draw cell border
+      // Cell border
       ctx.strokeStyle = "#888";
       ctx.strokeRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+    }
+  }
 
-
-  // Draw "SALE" pixel-art centered on the grid
+  // Draw "SALE" pixel-art centered on the grid (outside the cell loops)
   {
-    const pixelSize = Math.floor(Math.min(cellWidth, cellHeight) / 2.7);
-    const letterSpacing = 1;
-    const letterWidth = SALE_BITMAPS[0][0].length * pixelSize;
-    const letterHeight = SALE_BITMAPS[0].length * pixelSize;
-    const totalWidth = SALE_BITMAPS.length * letterWidth + (SALE_BITMAPS.length - 1) * letterSpacing * pixelSize;
-    const startX = Math.floor((width - totalWidth) / 2);
-    const startY = Math.floor((height - letterHeight) / 2);
-
     for (let i = 0; i < SALE_BITMAPS.length; i++) {
       drawBitmap(
         ctx,
@@ -214,29 +225,23 @@ for (let d = 0; d < numDots; d++) {
       );
     }
   }
-}}
-
-   
- 
 
   // Convert image to binary (purely black and white) for flipdot display
   {
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
-      // Apply thresholding - any pixel above 127 brightness becomes white (255), otherwise black (0)
       const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
       const binary = brightness > 127 ? 255 : 0;
-      data[i] = binary; // R
-      data[i + 1] = binary; // G
-      data[i + 2] = binary; // B
-      data[i + 3] = 255; // The board is not transparent 
+      data[i] = binary;
+      data[i + 1] = binary;
+      data[i + 2] = binary;
+      data[i + 3] = 255;
     }
     ctx.putImageData(imageData, 0, 0);
   }
 
   if (IS_DEV) {
-    // Save the canvas as a PNG file
     const filename = path.join(outputDir, "frame.png");
     const buffer = canvas.toBuffer("image/png");
     fs.writeFileSync(filename, buffer);
@@ -248,10 +253,10 @@ for (let d = 0; d < numDots; d++) {
     }
   }
 
-  frameCount++; // Increment frame for animation
-slowFrame++; // Increment for slower movement
+  frameCount++;
+  slowFrame++;
 
-console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
+  console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
   console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
   console.timeEnd("Write frame");
 });
