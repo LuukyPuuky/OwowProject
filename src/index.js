@@ -53,60 +53,34 @@ const ctx = canvas.getContext("2d");
 
 // Disable anti-aliasing and image smoothing
 ctx.imageSmoothingEnabled = false;
-// Set a pixel-perfect monospace font
-ctx.font = "18px monospace";
-// Align text precisely to pixel boundaries
-ctx.textBaseline = "top";
-
-// 1. Define pixel-art bitmaps (1 = white dot, 0 = black)
-const ICONS = {
-  heart: [
-    [0, 1, 0, 1, 0],
-    [1, 1, 1, 1, 1],
-    [1, 1, 1, 1, 1],
-    [0, 1, 1, 1, 0],
-    [0, 0, 1, 0, 0],
-  ],
-  circle: [
-    [0, 1, 1, 1, 0],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [0, 1, 1, 1, 0],
-  ],
-  house: [
-    [0, 0, 1, 0, 0],
-    [0, 1, 1, 1, 0],
-    [1, 1, 1, 1, 1],
-    [0, 1, 1, 1, 0],
-    [0, 1, 0, 1, 0],
-  ],
-};
-
-// 2. Draw a bitmap at (x, y) with a given pixel size
-function drawBitmap(ctx, bitmap, x, y, pixelSize = 6) {
-  for (let row = 0; row < bitmap.length; row++) {
-    for (let col = 0; col < bitmap[row].length; col++) {
-      ctx.fillStyle = bitmap[row][col] ? "#fff" : "#000";
-      // Draw a smaller circle for each pixel to make them less thick
-      const centerX = x + col * pixelSize + pixelSize / 2;
-      const centerY = y + row * pixelSize + pixelSize / 2;
-      const radius = pixelSize * 0.4; // 80% of pixelSize, adjust as needed
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-      ctx.fill();
-    }
-  }
-}
 
 // Initialize the ticker at x frames per second
 const ticker = new Ticker({ fps: FPS });
+
+let frameCount = 0; // For animation
+
+// Helper to get the border index for a cell, or -1 if not on border
+function getBorderIndex(x, y, cols, rows) {
+  if (y === 0) return x; // Top row, left to right
+  if (x === cols - 1) return cols - 1 + y; // Right column, top to bottom
+  if (y === rows - 1) return cols - 1 + rows - 1 + (cols - 1 - x); // Bottom row, right to left
+  if (x === 0) return cols - 1 + rows - 1 + cols - 1 + (rows - 1 - y); // Left column, bottom to top
+  return -1; // Not a border cell
+}
+
+// Pong game state
+let pong = {
+  ball: { x: 0.5, y: 0.5, vx: 0.012, vy: 0.015 },
+  paddleLeft: 0.4,
+  paddleRight: 0.4,
+  paddleHeight: 0.2,
+};
 
 ticker.start(({ deltaTime, elapsedTime }) => {
   // Clear the console
   console.clear();
   console.time("Write frame");
-  console.log(`Rendering a ${width}x${height} canvas`);
+  console.log(`Rendering a ${width}x${height} flipdot billboard`);
   console.log("View at http://localhost:3000/view");
 
   ctx.clearRect(0, 0, width, height);
@@ -115,37 +89,142 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // Draw centered pixel-art emoji (cycles every 2 seconds)
-  {
-    const iconNames = Object.keys(ICONS);
-    const iconIndex = Math.floor((elapsedTime / 2000) % iconNames.length);
-    const icon = ICONS[iconNames[iconIndex]];
-    const pixelSize = 4;
-    const iconWidth = icon[0].length * pixelSize;
-    const iconHeight = icon.length * pixelSize;
-    const iconX = Math.floor((width - iconWidth) / 2);
-    const iconY = Math.floor((height - iconHeight) / 2);
-    drawBitmap(ctx, icon, iconX, iconY, pixelSize);
+  // Grid setup
+  const rows = LAYOUT.length;
+  const cols = LAYOUT[0].length;
+  const cellWidth = width / cols;
+  const cellHeight = height / rows;
+
+  ctx.font = `${Math.floor(cellHeight * 0.5)}px monospace`;
+  ctx.textBaseline = "middle";
+  ctx.textAlign = "center";
+
+  // Blinking border dots setup
+  const borderLength = 2 * (rows + cols) - 4;
+  const numDots = 8;
+  const blinkOn = Math.floor(frameCount / 10) % 2 === 0;
+
+  // Draw grid and blinking border dots
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const borderIdx = getBorderIndex(x, y, cols, rows);
+
+      // Cell background
+      ctx.fillStyle = borderIdx !== -1 ? "#444" : "#222";
+      ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+
+      // Multiple blinking dots around border
+      for (let d = 0; d < numDots; d++) {
+        if (borderIdx === (frameCount + d * Math.floor(borderLength / numDots)) % borderLength && blinkOn) {
+          ctx.save();
+          ctx.fillStyle = "#ff0";
+          ctx.beginPath();
+          ctx.arc(
+            x * cellWidth + cellWidth / 2,
+            y * cellHeight + cellHeight / 2,
+            Math.min(cellWidth, cellHeight) * 0.3,
+            0,
+            2 * Math.PI
+          );
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      // Cell border
+      ctx.strokeStyle = "#888";
+      ctx.strokeRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
+    }
   }
+
+  // --- Pong Animation ---
+  // Calculate pixel positions
+  const ballX = Math.floor(pong.ball.x * width);
+  const ballY = Math.floor(pong.ball.y * height);
+  const paddleW = Math.floor(width * 0.02);
+  const paddleH = Math.floor(height * pong.paddleHeight);
+
+  // Move ball
+  pong.ball.x += pong.ball.vx;
+  pong.ball.y += pong.ball.vy;
+
+  // Bounce off top/bottom
+  if (pong.ball.y < 0) {
+    pong.ball.y = 0;
+    pong.ball.vy *= -1;
+  }
+  if (pong.ball.y > 1) {
+    pong.ball.y = 1;
+    pong.ball.vy *= -1;
+  }
+
+  // Bounce off paddles
+  // Left paddle
+  if (
+    pong.ball.x < 0.05 &&
+    pong.ball.y > pong.paddleLeft &&
+    pong.ball.y < pong.paddleLeft + pong.paddleHeight
+  ) {
+    pong.ball.x = 0.05;
+    pong.ball.vx *= -1;
+  }
+  // Right paddle
+  if (
+    pong.ball.x > 0.95 &&
+    pong.ball.y > pong.paddleRight &&
+    pong.ball.y < pong.paddleRight + pong.paddleHeight
+  ) {
+    pong.ball.x = 0.95;
+    pong.ball.vx *= -1;
+  }
+
+  // Simple AI for paddles
+  pong.paddleLeft += (pong.ball.y - pong.paddleLeft - pong.paddleHeight / 2) * 0.05;
+  pong.paddleRight += (pong.ball.y - pong.paddleRight - pong.paddleHeight / 2) * 0.05;
+
+  // Clamp paddles
+  pong.paddleLeft = Math.max(0, Math.min(1 - pong.paddleHeight, pong.paddleLeft));
+  pong.paddleRight = Math.max(0, Math.min(1 - pong.paddleHeight, pong.paddleRight));
+
+  // Draw paddles
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(
+    2,
+    Math.floor(pong.paddleLeft * height),
+    paddleW,
+    paddleH
+  );
+  ctx.fillRect(
+    width - paddleW - 2,
+    Math.floor(pong.paddleRight * height),
+    paddleW,
+    paddleH
+  );
+
+  // Draw ball
+  ctx.beginPath();
+  ctx.arc(ballX, ballY, Math.floor(width * 0.02), 0, 2 * Math.PI);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+
+  // --- End Pong Animation ---
 
   // Convert image to binary (purely black and white) for flipdot display
   {
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
     for (let i = 0; i < data.length; i += 4) {
-      // Apply thresholding - any pixel above 127 brightness becomes white (255), otherwise black (0)
       const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
       const binary = brightness > 127 ? 255 : 0;
-      data[i] = binary; // R
-      data[i + 1] = binary; // G
-      data[i + 2] = binary; // B
-      data[i + 3] = 255; // The board is not transparent :-)
+      data[i] = binary;
+      data[i + 1] = binary;
+      data[i + 2] = binary;
+      data[i + 3] = 255;
     }
     ctx.putImageData(imageData, 0, 0);
   }
 
   if (IS_DEV) {
-    // Save the canvas as a PNG file
     const filename = path.join(outputDir, "frame.png");
     const buffer = canvas.toBuffer("image/png");
     fs.writeFileSync(filename, buffer);
@@ -157,7 +236,9 @@ ticker.start(({ deltaTime, elapsedTime }) => {
     }
   }
 
-  console.log(`Eslapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
+  frameCount++;
+
+  console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
   console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
   console.timeEnd("Write frame");
 });
