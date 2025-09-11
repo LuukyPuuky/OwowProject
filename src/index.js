@@ -99,26 +99,9 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
 
-  // Blinking border dots setup
-  const borderLength = 2 * (rows + cols) - 4;
-  const numDots = 8;
-  const blinkOn = Math.floor(frameCount / 10) % 2 === 0;
-
-  // Draw grid and blinking border dots
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      const borderIdx = getBorderIndex(x, y, cols, rows);
-
-      // Cell background
-      ctx.fillStyle = borderIdx !== -1 ? "#444" : "#222";
-      ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
 
 
-      // Cell border
-      ctx.strokeStyle = "#888";
-      ctx.strokeRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
-    }
-  }
+ 
 
   // --- Pong Animation ---
   // Calculate pixel positions
