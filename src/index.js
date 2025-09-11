@@ -113,23 +113,6 @@ ticker.start(({ deltaTime, elapsedTime }) => {
       ctx.fillStyle = borderIdx !== -1 ? "#444" : "#222";
       ctx.fillRect(x * cellWidth, y * cellHeight, cellWidth, cellHeight);
 
-      // Multiple blinking dots around border
-      for (let d = 0; d < numDots; d++) {
-        if (borderIdx === (frameCount + d * Math.floor(borderLength / numDots)) % borderLength && blinkOn) {
-          ctx.save();
-          ctx.fillStyle = "#ff0";
-          ctx.beginPath();
-          ctx.arc(
-            x * cellWidth + cellWidth / 2,
-            y * cellHeight + cellHeight / 2,
-            Math.min(cellWidth, cellHeight) * 0.3,
-            0,
-            2 * Math.PI
-          );
-          ctx.fill();
-          ctx.restore();
-        }
-      }
 
       // Cell border
       ctx.strokeStyle = "#888";
