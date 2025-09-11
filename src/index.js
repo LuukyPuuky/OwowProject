@@ -173,6 +173,41 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#fff";
   ctx.fill();
 
+  let pong = {
+  ball: { x: 0.5, y: 0.5, vx: 0.012, vy: 0.015 },
+  paddleLeft: 0.4,
+  paddleRight: 0.4,
+  paddleHeight: 0.2,
+  scoreLeft: 0,
+  scoreRight: 0,
+};
+// Left player missed
+if (pong.ball.x < 0) {
+  pong.scoreRight++;
+  pong.ball.x = 0.5;
+  pong.ball.y = 0.5;
+  pong.ball.vx = 0.012;
+  pong.ball.vy = 0.015;
+}
+
+// Right player missed
+if (pong.ball.x > 1) {
+  pong.scoreLeft++;
+  pong.ball.x = 0.5;
+  pong.ball.y = 0.5;
+  pong.ball.vx = -0.012;
+  pong.ball.vy = 0.015;
+}
+
+ctx.font = `${Math.floor(height * 0.1)}px monospace`;
+ctx.fillStyle = "#fff";
+ctx.textAlign = "center";
+ctx.fillText(
+  `${pong.scoreLeft}   ${pong.scoreRight}`,
+  width / 2,
+  Math.floor(height * 0.1)
+);
+
   // --- End Pong Animation ---
 
   // Convert image to binary (purely black and white) for flipdot display
