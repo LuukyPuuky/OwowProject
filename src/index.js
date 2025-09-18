@@ -194,25 +194,24 @@ if (pong.ball.x > 1) {
   ctx.fill();
 
   
-// Draw scoreboard - single clean version
-ctx.font = `${Math.floor(height * 0.15)}px monospace`;
+// Draw scoreboard 
+ctx.font = "16px monospace"; 
 ctx.fillStyle = "#fff";
 ctx.textAlign = "center";
 ctx.textBaseline = "top";
 
-const scoreY = Math.floor(height * 0.05);
+const scoreY = 8; 
 ctx.fillText(`${pong.scoreLeft}   ${pong.scoreRight}`, width / 2, scoreY);
 
-//Add a center line for classic Pong look 
-ctx.setLineDash([5, 5]);
-ctx.strokeStyle = "#fff";
-ctx.lineWidth = 1; 
+// Center line for classic Pong look 
+ctx.setLineDash([4, 4]); 
+ctx.strokeStyle = "#888"; 
+ctx.lineWidth = 1;
 ctx.beginPath();
-ctx.moveTo(width / 2, height * 0.2); 
-ctx.lineTo(width / 2, height * 0.8);   
+ctx.moveTo(width / 2, 30); 
+ctx.lineTo(width / 2, height - 10); 
 ctx.stroke();
 ctx.setLineDash([]); 
-
 
   // --- End Pong Animation ---
 
@@ -249,3 +248,4 @@ ctx.setLineDash([]);
   console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
   console.timeEnd("Write frame");
 });
+
