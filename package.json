@@ -5,7 +5,7 @@
   "description": "Small black & white LED-matrix calendar: big day + fake mini month grid.",
   "main": "src/app.js",
   "scripts": {
-    "start": "node src/app.js",
+  // "start" script removed for static site deployment
     "dev": "nodemon src/app.js"
   },
   "license": "ISC",
