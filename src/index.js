@@ -57,16 +57,15 @@ ctx.imageSmoothingEnabled = false;
 // Initialize the ticker at x frames per second
 const ticker = new Ticker({ fps: FPS });
 
-let frameCount = 0; // For animation
-
-// --- DVD Bouncing Logo State ---
+let frameCount = 0; 
+// --- DVD Bouncing Text State ---
 let dvd = {
   x: width / 2,
   y: height / 2,
-  vx: 0.7,
+  vx: 0.7,   
   vy: 0.7,
-  size: 0.15, // relative size of logo
-  color: "#fff" // White for black & white display
+  size: 0.2, 
+  text: "DVD"
 };
 
 ticker.start(({ deltaTime, elapsedTime }) => {
@@ -81,43 +80,42 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // --- DVD Animation ---
-  const logoW = Math.floor(width * dvd.size);
-  const logoH = Math.floor(height * dvd.size * 0.5);
+  // --- DVD Text Animation ---
+  ctx.font = "20px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
 
-  // Move logo
+  const metrics = ctx.measureText(dvd.text);
+  const textW = metrics.width;
+  const textH = height * dvd.size;
+
+  // Move text
   dvd.x += dvd.vx;
   dvd.y += dvd.vy;
 
   // Bounce horizontally
   if (dvd.x <= 0) {
     dvd.x = 0;
-    dvd.vx = Math.abs(dvd.vx); // force right
+    dvd.vx = Math.abs(dvd.vx);
   }
-  if (dvd.x + logoW >= width) {
-    dvd.x = width - logoW;
-    dvd.vx = -Math.abs(dvd.vx); // force left
+  if (dvd.x + textW >= width) {
+    dvd.x = width - textW;
+    dvd.vx = -Math.abs(dvd.vx);
   }
 
   // Bounce vertically
   if (dvd.y <= 0) {
     dvd.y = 0;
-    dvd.vy = Math.abs(dvd.vy); // force down
+    dvd.vy = Math.abs(dvd.vy);
   }
-  if (dvd.y + logoH >= height) {
-    dvd.y = height - logoH;
-    dvd.vy = -Math.abs(dvd.vy); // force up
+  if (dvd.y + textH >= height) {
+    dvd.y = height - textH;
+    dvd.vy = -Math.abs(dvd.vy);
   }
 
-  // Draw logo (rectangle with "DVD" text)
-  ctx.fillStyle = dvd.color;
-  ctx.fillRect(dvd.x, dvd.y, logoW, logoH);
-
-  ctx.fillStyle = "#000";
-  ctx.font = `${Math.floor(logoH * 0.6)}px "PPNeueMontreal", monospace`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("DVD", dvd.x + logoW / 2, dvd.y + logoH / 2);
+  // Draw only the text
+  ctx.fillStyle = "#fff";
+  ctx.fillText(dvd.text, dvd.x, dvd.y);
 
   // --- End DVD Animation ---
 
