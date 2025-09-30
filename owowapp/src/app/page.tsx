@@ -1,7 +1,5 @@
-export default function HomePage() {
-  return (
-    <section>
-      <h1>Welcome to OwowApp 🚀</h1>
-    </section>
-  );
+import { AnimationLibrary } from "../components/animation-library";
+
+export default function Page() {
+  return <AnimationLibrary />;
 }

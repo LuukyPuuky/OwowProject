@@ -1,23 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import React from "react";
-import Navbar from "../components/Navbar";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "v0 App",
+  description: "Created with v0",
+  generator: "v0.app",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      <body>
-        <Navbar />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
