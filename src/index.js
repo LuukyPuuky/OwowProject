@@ -47,31 +47,33 @@ registerFont(path.resolve(import.meta.dirname, "../fonts/Px437_ACM_VGA.ttf"), {
   family: "Px437_ACM_VGA",
 });
 
-// Create canvas with the specified resolution
+// Create canvas
 const canvas = createCanvas(width, height);
 const ctx = canvas.getContext("2d");
-
-// Disable anti-aliasing and image smoothing
 ctx.imageSmoothingEnabled = false;
 
-// Initialize the ticker at x frames per second
+// Initialize ticker
 const ticker = new Ticker({ fps: FPS });
 
-let frameCount = 0; 
-// --- DVD Bouncing Text State ---
-let dvd = {
-  x: width / 2,
-  y: height / 2,
-  vx: 0.7,   
-  vy: 0.7,
-  size: 0.2, 
-  text: "DVD"
-};
+// --- Announcement Board State ---
+const announcements = [
+  "Welcome to the Office!",
+  "Meeting at 3 PM in Conference Room A",
+  "Lunch Special: Pizza Today",
+  "Happy Birthday, Alice!",
+  "Don't forget to submit your timesheets!"
+];
+
+let currentIndex = 0;
+let xPos = width;
+
+// Scrolling speed in pixels per frame
+const SCROLL_SPEED = 1;
 
 ticker.start(({ deltaTime, elapsedTime }) => {
   console.clear();
   console.time("Write frame");
-  console.log(`Rendering a ${width}x${height} flipdot billboard`);
+  console.log(`Rendering a ${width}x${height} flipdot announcement board`);
   console.log("View at http://localhost:3000/view");
 
   ctx.clearRect(0, 0, width, height);
@@ -80,59 +82,39 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // --- DVD Text Animation ---
+  // --- Draw Current Announcement ---
+  const text = announcements[currentIndex];
   ctx.font = "15px monospace";
+  ctx.fillStyle = "#fff";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
-  const metrics = ctx.measureText(dvd.text);
+  const metrics = ctx.measureText(text);
   const textW = metrics.width;
-  const textH = 20;
 
-  // Move text
-  dvd.x += dvd.vx;
-  dvd.y += dvd.vy;
+  ctx.fillText(text, xPos, height / 2 - 10);
 
-  // Bounce horizontally
-  if (dvd.x <= 0) {
-    dvd.x = 0;
-    dvd.vx = Math.abs(dvd.vx);
+  // Scroll left
+  xPos -= SCROLL_SPEED;
+
+  // Move to next announcement when current one scrolls off screen
+  if (xPos + textW < 0) {
+    currentIndex = (currentIndex + 1) % announcements.length;
+    xPos = width; // reset position
   }
-  if (dvd.x + textW >= width) {
-    dvd.x = width - textW;
-    dvd.vx = -Math.abs(dvd.vx);
-  }
-
-  // Bounce vertically
-  if (dvd.y <= 0) {
-    dvd.y = 0;
-    dvd.vy = Math.abs(dvd.vy);
-  }
-  if (dvd.y + textH >= height) {
-    dvd.y = height - textH;
-    dvd.vy = -Math.abs(dvd.vy);
-  }
-
-  // Draw only the text
-  ctx.fillStyle = "#fff";
-  ctx.fillText(dvd.text, dvd.x, dvd.y);
-
-  // --- End DVD Animation ---
 
   // Convert image to binary for flipdot
-  {
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      const binary = brightness > 127 ? 255 : 0;
-      data[i] = binary;
-      data[i + 1] = binary;
-      data[i + 2] = binary;
-      data[i + 3] = 255;
-    }
-    ctx.putImageData(imageData, 0, 0);
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const binary = brightness > 127 ? 255 : 0;
+    data[i] = binary;
+    data[i + 1] = binary;
+    data[i + 2] = binary;
+    data[i + 3] = 255;
   }
+  ctx.putImageData(imageData, 0, 0);
 
   if (IS_DEV) {
     const filename = path.join(outputDir, "frame.png");
@@ -146,8 +128,5 @@ ticker.start(({ deltaTime, elapsedTime }) => {
     }
   }
 
-  frameCount++;
-  console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
-  console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
   console.timeEnd("Write frame");
-});
+})
