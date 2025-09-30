@@ -59,27 +59,18 @@ const ticker = new Ticker({ fps: FPS });
 
 let frameCount = 0; // For animation
 
-// Helper to get the border index for a cell, or -1 if not on border
-function getBorderIndex(x, y, cols, rows) {
-  if (y === 0) return x; // Top row, left to right
-  if (x === cols - 1) return cols - 1 + y; // Right column, top to bottom
-  if (y === rows - 1) return cols - 1 + rows - 1 + (cols - 1 - x); // Bottom row, right to left
-  if (x === 0) return cols - 1 + rows - 1 + cols - 1 + (rows - 1 - y); // Left column, bottom to top
-  return -1; // Not a border cell
-}
-
-// Pong game state
-let pong = {
-  ball: { x: 0.5, y: 0.5, vx: 0.012, vy: 0.015 },
-  paddleLeft: 0.4,
-  paddleRight: 0.4,
-  paddleHeight: 0.2,
-  scoreLeft: 0,
-  scoreRight: 0,
+// --- DVD Bouncing Logo State ---
+let dvd = {
+  x: width / 2,
+  y: height / 2,
+  vx: 2,
+  vy: 2,
+  size: 0.15, // relative size of logo
+  color: "#fff",
+  colors: ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"],
 };
 
 ticker.start(({ deltaTime, elapsedTime }) => {
-  // Clear the console
   console.clear();
   console.time("Write frame");
   console.log(`Rendering a ${width}x${height} flipdot billboard`);
@@ -87,135 +78,55 @@ ticker.start(({ deltaTime, elapsedTime }) => {
 
   ctx.clearRect(0, 0, width, height);
 
-  // Fill the canvas with a black background
+  // Background
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // Grid setup
-  const rows = LAYOUT.length;
-  const cols = LAYOUT[0].length;
-  const cellWidth = width / cols;
-  const cellHeight = height / rows;
+  // --- DVD Animation ---
+  const logoW = Math.floor(width * dvd.size);
+  const logoH = Math.floor(height * dvd.size * 0.5);
 
-  ctx.font = `${Math.floor(cellHeight * 0.5)}px monospace`;
-  ctx.textBaseline = "middle";
+  // Move logo
+  dvd.x += dvd.vx;
+  dvd.y += dvd.vy;
+
+  // Bounce horizontally
+  if (dvd.x < 0) {
+    dvd.x = 0;
+    dvd.vx *= -1;
+    dvd.color = dvd.colors[Math.floor(Math.random() * dvd.colors.length)];
+  }
+  if (dvd.x + logoW > width) {
+    dvd.x = width - logoW;
+    dvd.vx *= -1;
+    dvd.color = dvd.colors[Math.floor(Math.random() * dvd.colors.length)];
+  }
+
+  // Bounce vertically
+  if (dvd.y < 0) {
+    dvd.y = 0;
+    dvd.vy *= -1;
+    dvd.color = dvd.colors[Math.floor(Math.random() * dvd.colors.length)];
+  }
+  if (dvd.y + logoH > height) {
+    dvd.y = height - logoH;
+    dvd.vy *= -1;
+    dvd.color = dvd.colors[Math.floor(Math.random() * dvd.colors.length)];
+  }
+
+  // Draw logo (rectangle with "DVD" text)
+  ctx.fillStyle = dvd.color;
+  ctx.fillRect(dvd.x, dvd.y, logoW, logoH);
+
+  ctx.fillStyle = "#000";
+  ctx.font = `${Math.floor(logoH * 0.6)}px "PPNeueMontreal", monospace`;
   ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("DVD", dvd.x + logoW / 2, dvd.y + logoH / 2);
 
+  // --- End DVD Animation ---
 
-
- 
-
-  // --- Pong Animation ---
-  // Calculate pixel positions
-  const ballX = Math.floor(pong.ball.x * width);
-  const ballY = Math.floor(pong.ball.y * height);
-  const paddleW = Math.floor(width * 0.02);
-  const paddleH = Math.floor(height * pong.paddleHeight);
-
-  // Move ball
-  pong.ball.x += pong.ball.vx;
-  pong.ball.y += pong.ball.vy;
-
-  // Bounce off top/bottom
-  if (pong.ball.y < 0) {
-    pong.ball.y = 0;
-    pong.ball.vy *= -1;
-  }
-  if (pong.ball.y > 1) {
-    pong.ball.y = 1;
-    pong.ball.vy *= -1;
-  }
-
-  // Bounce off paddles
-  // Left paddle
-  if (
-    pong.ball.x < 0.05 &&
-    pong.ball.y > pong.paddleLeft &&
-    pong.ball.y < pong.paddleLeft + pong.paddleHeight
-  ) {
-    pong.ball.x = 0.05;
-    pong.ball.vx *= -1;
-  }
-  // Right paddle
-  if (
-    pong.ball.x > 0.95 &&
-    pong.ball.y > pong.paddleRight &&
-    pong.ball.y < pong.paddleRight + pong.paddleHeight
-  ) {
-    pong.ball.x = 0.95;
-    pong.ball.vx *= -1;
-  }
-  
-  // Left player missed
-if (pong.ball.x < 0) {
-  pong.scoreRight++;
-  pong.ball.x = 0.5;
-  pong.ball.y = 0.5;
-  pong.ball.vx = 0.012;
-  pong.ball.vy = 0.015;
-}
-
-// Right player missed
-if (pong.ball.x > 1) {
-  pong.scoreLeft++;
-  pong.ball.x = 0.5;
-  pong.ball.y = 0.5;
-  pong.ball.vx = -0.012;
-  pong.ball.vy = 0.015;
-}
-
-  // Simple AI for paddles
-  pong.paddleLeft += (pong.ball.y - pong.paddleLeft - pong.paddleHeight / 2) * 0.05;
-  pong.paddleRight += (pong.ball.y - pong.paddleRight - pong.paddleHeight / 2) * 0.05;
-
-  // Clamp paddles
-  pong.paddleLeft = Math.max(0, Math.min(1 - pong.paddleHeight, pong.paddleLeft));
-  pong.paddleRight = Math.max(0, Math.min(1 - pong.paddleHeight, pong.paddleRight));
-
-  // Draw paddles
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(
-    2,
-    Math.floor(pong.paddleLeft * height),
-    paddleW,
-    paddleH
-  );
-  ctx.fillRect(
-    width - paddleW - 2,
-    Math.floor(pong.paddleRight * height),
-    paddleW,
-    paddleH
-  );
-
-  // Draw ball
-  ctx.beginPath();
-  ctx.arc(ballX, ballY, Math.floor(width * 0.02), 0, 2 * Math.PI);
-  ctx.fillStyle = "#fff";
-  ctx.fill();
-
-  
-// Draw scoreboard 
-ctx.font = "16px monospace"; 
-ctx.fillStyle = "#fff";
-ctx.textAlign = "center";
-ctx.textBaseline = "top";
-
-const scoreY = 8; 
-ctx.fillText(`${pong.scoreLeft}   ${pong.scoreRight}`, width / 2, scoreY);
-
-// Center line for classic Pong look 
-ctx.setLineDash([4, 4]); 
-ctx.strokeStyle = "#888"; 
-ctx.lineWidth = 1;
-ctx.beginPath();
-ctx.moveTo(width / 2, 30); 
-ctx.lineTo(width / 2, height - 10); 
-ctx.stroke();
-ctx.setLineDash([]); 
-
-  // --- End Pong Animation ---
-
-  // Convert image to binary (purely black and white) for flipdot display
+  // Convert image to binary for flipdot
   {
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
@@ -243,9 +154,7 @@ ctx.setLineDash([]);
   }
 
   frameCount++;
-
   console.log(`Elapsed time: ${(elapsedTime / 1000).toFixed(2)}s`);
   console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
   console.timeEnd("Write frame");
 });
-
