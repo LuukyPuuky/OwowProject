@@ -302,59 +302,165 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 			req.end();
 		});
 
-		// render large numeric scores instead of tallies
-		const pad = 6;
-		const half = Math.floor(width / 2);
-		const leftBox = { x: 0, y: 0, w: half, h: height };
-		const rightBox = { x: half, y: 0, w: width - half, h: height };
-
-		function drawScore(box, value){
-			const text = String(value);
-			// auto-fit font size within the box with margins
-			let base = Math.max(12, Math.floor(Math.min(box.w, box.h) * 0.8));
-			ctx.fillStyle = '#fff';
-			let size = base;
-			ctx.font = `${size}px PPNeueMontreal`;
-			let metrics = ctx.measureText(text);
-			const maxW = Math.max(1, box.w - pad * 2);
-			const maxH = Math.max(1, box.h - pad * 2);
-			// scale down if needed
-			if (metrics.width > maxW || size > maxH){
-				const scaleW = maxW / Math.max(1, metrics.width);
-				const scaleH = maxH / Math.max(1, size);
-				size = Math.max(12, Math.floor(size * Math.min(scaleW, scaleH)));
-				ctx.font = `${size}px PPNeueMontreal`;
-				metrics = ctx.measureText(text);
+		// render big numeric scores instead of tallies
+		const mid = Math.floor(width / 2);
+		const padX = 6;
+		const padY = 2;
+		const leftText = String(a|0);
+		const rightText = String(b|0);
+		function drawFittedNumber(text, xStart, xEnd) {
+			const availW = Math.max(1, xEnd - xStart - padX * 2);
+			// binary search a font size that fits width and height
+			let lo = 6, hi = Math.max(12, Math.min(width, height));
+			let best = lo;
+			while (lo <= hi) {
+				const midSize = Math.floor((lo + hi) / 2);
+				ctx.font = `${midSize}px PPNeueMontreal`;
+				const m = ctx.measureText(text);
+				const fitsW = m.width <= availW;
+				const fitsH = midSize <= (height - padY * 2);
+				if (fitsW && fitsH) { best = midSize; lo = midSize + 1; } else { hi = midSize - 1; }
 			}
-			const x = box.x + Math.floor((box.w - metrics.width) / 2);
-			const y = Math.floor((box.h - size) / 2);
-			ctx.fillText(text, x, y);
+			ctx.font = `${best}px PPNeueMontreal`;
+			ctx.fillStyle = '#fff';
+			const metrics = ctx.measureText(text);
+			const tx = Math.floor(xStart + (xEnd - xStart - metrics.width) / 2);
+			const ty = Math.floor((height - best) / 2);
+			ctx.fillText(text, tx, ty);
+		}
+		drawFittedNumber(leftText, 0, mid);
+		drawFittedNumber(rightText, mid, width);
+
+		// vertical divider
+		ctx.fillStyle = '#fff';
+		ctx.fillRect(mid - 1, 0, 2, height);
+
+	} else if (currentScene === 'demo2') {
+		// Ski slope with random holes: a dot skis along and can fall into holes if not jumping
+		const state = await new Promise(resolve => {
+			const req = http.request({ hostname: '127.0.0.1', port: 3000, path: '/ski', method: 'GET' }, res => {
+				let data = '';
+				res.on('data', c => data += c);
+				res.on('end', () => { try { resolve(JSON.parse(data||'{}')); } catch { resolve({}); } });
+			});
+			req.on('error', () => resolve({}));
+			req.end();
+		});
+		const { lastJumpTs = 0, jumpWindowMs = 600, resetAt = 0, started = false } = state;
+		const tsec = elapsedTime / 1300; // slower
+		const midY = Math.floor(height * 0.7);
+		const amp = Math.max(3, Math.floor(height * 0.18));
+		const scrollPxPerSec = Math.max(16, Math.floor(width * 0.75));
+		const freq = (2 * Math.PI) / Math.max(24, Math.floor(width * 0.9));
+		const phase = tsec * scrollPxPerSec; // world pixels scrolled
+		// Freeze scroll while falling so hole stays aligned under the dot
+		if (!globalThis.__runnerFall || resetAt !== (globalThis.__runnerFall.resetAt||0)) {
+			globalThis.__runnerFall = { falling: false, y: 0, resetAt, fallPhase: undefined };
+		}
+		const isFalling = !!globalThis.__runnerFall.falling;
+		const phaseEff = isFalling && globalThis.__runnerFall.fallPhase !== undefined ? globalThis.__runnerFall.fallPhase : phase;
+
+		// Pseudo-random holes per segment along the ground
+		const segLen = Math.max(18, Math.floor(width * 0.35));
+		const holeWidth = Math.max(3, Math.floor(segLen * 0.22));
+		function rand01(n){ let x = Math.imul((n ^ 0x9e3779b9) >>> 0, 0x85ebca6b); x ^= x >>> 15; x = Math.imul(x, 0xc2b2ae35); x ^= x >>> 16; return (x >>> 0) / 0xFFFFFFFF; }
+		const holeChance = 0.22; // fewer holes
+		const startSafeDistance = Math.floor(width * 0.15); // allow holes sooner near the player
+
+		// Build hole mask for this frame using effective phase (frozen during fall)
+		const holeMask = new Array(width);
+		for (let x = 0; x < width; x++) {
+			const worldX = x + phaseEff;
+			const segIdx = Math.floor(worldX / segLen);
+			const offset = worldX - segIdx * segLen;
+			const r = rand01(segIdx);
+			const hasHole = (started || isFalling) && r < holeChance && worldX > phaseEff + startSafeDistance;
+			const holeStart = Math.floor(r * Math.max(1, segLen - holeWidth));
+			holeMask[x] = hasHole && offset >= holeStart && offset < holeStart + holeWidth;
 		}
 
-		drawScore(leftBox, a);
-		drawScore(rightBox, b);
-
-		// optional center divider
-		ctx.strokeStyle = '#fff';
-		ctx.lineWidth = 1;
-		ctx.beginPath();
-		ctx.moveTo(half + 0.5, 0);
-		ctx.lineTo(half + 0.5, height);
-		ctx.stroke();
-
-		// shockwave when score changes
-		if (lastTs) {
-			const age = (elapsedTime - lastTs);
-			if (age >= 0 && age < 1200) {
-				const progress = age / 1200;
-				const radius = Math.sqrt(width*width + height*height) * progress;
-				const alpha = 1 - progress;
-				ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, Math.min(1, alpha))})`;
-				ctx.lineWidth = 2 + 6 * (1 - progress);
-				ctx.beginPath();
-				ctx.arc(Math.floor(width/2), Math.floor(height/2), radius, 0, Math.PI*2);
-				ctx.stroke();
+		// Ground rendering with holes
+		ctx.fillStyle = '#fff';
+		for (let x = 0; x < width; x++) {
+			const worldX = x + phaseEff;
+			const gyBase = midY + Math.floor(amp * Math.sin(worldX * freq));
+			// If falling, keep the hole screen window open so the skier can be seen falling in
+			const inFrozenHole = !!globalThis.__runnerFall && globalThis.__runnerFall.falling && typeof globalThis.__runnerFall.holeX0 === 'number' && x >= globalThis.__runnerFall.holeX0 && x <= globalThis.__runnerFall.holeX1;
+			if (!holeMask[x] && !inFrozenHole) {
+				const gy = Math.min(height - 1, gyBase);
+				ctx.fillRect(x, gy, 1, Math.max(0, height - gy));
 			}
+		}
+		// Carve holes to black using the same mask and frozen span so ground cannot "heal" holes
+		ctx.fillStyle = '#000';
+		for (let x = 0; x < width; x++) {
+			const worldX = x + phaseEff;
+			const gy = Math.min(height - 1, midY + Math.floor(amp * Math.sin(worldX * freq)));
+			const inFrozenHole = !!globalThis.__runnerFall && globalThis.__runnerFall.falling && typeof globalThis.__runnerFall.holeX0 === 'number' && x >= globalThis.__runnerFall.holeX0 && x <= globalThis.__runnerFall.holeX1;
+			if (holeMask[x] || inFrozenHole) {
+				ctx.fillRect(x, gy, 1, Math.max(0, height - gy));
+			}
+		}
+
+		const playerX = Math.floor(width * 0.25);
+		const groundYAt = (wx)=> midY + Math.floor(amp * Math.sin(wx * freq));
+		const playerWorldX = playerX + phaseEff;
+		// Check hole under the full player footprint (5px wide)
+		let isHoleHere = false;
+		for (let px = Math.max(0, playerX - 2); px <= Math.min(width - 1, playerX + 2); px++) {
+			if (holeMask[px]) { isHoleHere = true; break; }
+		}
+		let jumpOffset = 0;
+		if (lastJumpTs && jumpWindowMs) {
+			const since = (Date.now() - lastJumpTs);
+			if (since >= 0 && since < jumpWindowMs) {
+				const u = since / jumpWindowMs;
+				const arc = 4 * u * (1 - u);
+				jumpOffset = -Math.floor(arc * Math.max(5, Math.floor(height * 0.22)));
+			}
+		}
+		// local fall state across frames
+		if (!globalThis.__runnerFall || resetAt !== (globalThis.__runnerFall.resetAt||0)) {
+			globalThis.__runnerFall = { falling: false, y: 0, resetAt };
+		}
+		const groundY = groundYAt(playerWorldX);
+		if (!globalThis.__runnerFall.falling) {
+			if (started && isHoleHere && jumpOffset === 0) {
+				globalThis.__runnerFall.falling = true;
+				globalThis.__runnerFall.y = groundY - 3;
+				globalThis.__runnerFall.fallPhase = phaseEff; // freeze scroll so hole stays under the dot
+				// persist the on-screen hole span from the mask, expanded to the player footprint
+				let x0 = Math.max(0, playerX - 2), x1 = Math.min(width - 1, playerX + 2);
+				while (x0 > 0 && holeMask[x0 - 1]) x0--;
+				while (x1 < width - 1 && holeMask[x1 + 1]) x1++;
+				globalThis.__runnerFall.holeX0 = x0;
+				globalThis.__runnerFall.holeX1 = x1;
+				// notify server to stop the game (game over)
+				try {
+					await new Promise(resolve => {
+						const req = http.request({ hostname: '127.0.0.1', port: 3000, path: '/ski/stop', method: 'POST' }, res => { res.on('data', ()=>{}); res.on('end', resolve); });
+						req.on('error', resolve);
+						req.end();
+					});
+				} catch {}
+			}
+		}
+		let drawY;
+		if (globalThis.__runnerFall.falling) {
+			const step = Math.max(1, Math.floor(height * 0.03));
+			globalThis.__runnerFall.y = Math.min(height - 1, globalThis.__runnerFall.y + step);
+			drawY = globalThis.__runnerFall.y;
+		} else {
+			drawY = Math.max(0, groundY + jumpOffset - 3);
+		}
+		ctx.fillStyle = '#fff';
+		ctx.fillRect(playerX - 2, drawY, 5, 5);
+		// Not started → hint; Stopped after fall → 'Game Over'
+		if (!started) {
+			ctx.font = `${Math.max(8, Math.floor(height * 0.18))}px PPNeueMontreal`;
+			const msg = (globalThis.__runnerFall.falling ? 'Game Over' : 'Press Start');
+			const m = ctx.measureText(msg);
+			ctx.fillText(msg, Math.max(1, Math.floor((width - m.width) / 2)), 1);
 		}
 	} else {
 		renderScene({ scene: currentScene, ctx, width, height, elapsedTime });

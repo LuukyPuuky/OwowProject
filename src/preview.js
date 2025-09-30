@@ -76,6 +76,12 @@ http
           <button id="tgReset">Reset</button>
           <span id="tgStatus" style="color:#333;display:inline-block;min-width:160px;height:20px;line-height:20px"></span>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
+          <strong>Ski:</strong>
+          <button id="skiJump">Jump</button>
+          <button id="skiStart">Start Game</button>
+          <span id="skiStatus" style="color:#333;display:inline-block;min-width:120px;height:20px;line-height:20px"></span>
+        </div>
         <div style="max-width:720px;text-align:center;color:#666;font-size:14px;line-height:1.35">
           Votes are counted over the last 20 minutes. If happy and sad are equal (or there are no votes), a neutral face is shown.
         </div>
@@ -151,6 +157,38 @@ http
           document.getElementById('tgA').addEventListener('click', ()=>tgAdd('A'));
           document.getElementById('tgB').addEventListener('click', ()=>tgAdd('B'));
           document.getElementById('tgReset').addEventListener('click', tgReset);
+
+          async function skiJump(){
+            try{
+              const r = await fetch('/ski/jump', {method:'POST'});
+              document.getElementById('skiStatus').textContent = r.ok ? 'Jump!' : 'Failed';
+              if (r.ok) setTimeout(()=>{ const el = document.getElementById('skiStatus'); if (el.textContent==='Jump!') el.textContent=''; }, 600);
+            }catch{ document.getElementById('skiStatus').textContent = 'Failed'; }
+          }
+          async function skiStart(){
+            try{
+              await fetch('/ski/start', {method:'POST'});
+              document.getElementById('skiStatus').textContent = 'Game started';
+              setTimeout(()=>{ const el = document.getElementById('skiStatus'); if (el.textContent==='Game started') el.textContent=''; }, 800);
+            }catch{}
+          }
+          document.getElementById('skiJump').addEventListener('click', skiJump);
+          document.getElementById('skiStart').addEventListener('click', skiStart);
+          // Spacebar triggers jump
+          window.addEventListener('keydown', (e)=>{
+            if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); skiJump(); }
+          });
+          // Keep Start button enabled/disabled based on started flag
+          async function syncSkiUI(){
+            try{
+              const r = await fetch('/ski');
+              const j = await r.json();
+              const btn = document.getElementById('skiStart');
+              if (btn) btn.disabled = !!j.started;
+            }catch{}
+          }
+          setInterval(syncSkiUI, 600);
+          syncSkiUI();
         </script>
       </body></html>
     `);
@@ -180,6 +218,44 @@ http
 					res.end(JSON.stringify({ ok: false }));
 				}
 			});
+		} else if (parsed.pathname === "/ski") {
+			// return simple input state for runner
+			if (!globalThis.__ski_state) {
+				globalThis.__ski_state = { lastJumpTs: 0, jumpWindowMs: 700, resetAt: 0, started: false };
+			}
+			const { lastJumpTs, jumpWindowMs, resetAt, started } = globalThis.__ski_state;
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ lastJumpTs, jumpWindowMs, resetAt, started }));
+		} else if (parsed.pathname === "/ski/jump" && req.method === "POST") {
+			if (!globalThis.__ski_state) {
+				globalThis.__ski_state = { lastJumpTs: 0, jumpWindowMs: 700, resetAt: 0, started: false };
+			}
+			globalThis.__ski_state.lastJumpTs = Date.now();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ ok:true }));
+		} else if (parsed.pathname === "/ski/start" && req.method === "POST") {
+			if (!globalThis.__ski_state) {
+				globalThis.__ski_state = { lastJumpTs: 0, jumpWindowMs: 700, resetAt: 0, started: false };
+			}
+			globalThis.__ski_state.started = true;
+			globalThis.__ski_state.resetAt = Date.now();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ ok:true }));
+		} else if (parsed.pathname === "/ski/stop" && req.method === "POST") {
+			if (!globalThis.__ski_state) {
+				globalThis.__ski_state = { lastJumpTs: 0, jumpWindowMs: 700, resetAt: 0, started: false };
+			}
+			globalThis.__ski_state.started = false;
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ ok:true }));
+		} else if (parsed.pathname === "/ski/reset" && req.method === "POST") {
+			if (!globalThis.__ski_state) {
+				globalThis.__ski_state = { lastJumpTs: 0, jumpWindowMs: 700, resetAt: 0, started: false };
+			}
+			globalThis.__ski_state.lastJumpTs = 0;
+			globalThis.__ski_state.resetAt = Date.now();
+			res.writeHead(200, { "Content-Type": "application/json" });
+			res.end(JSON.stringify({ ok:true }));
 		} else if (parsed.pathname === "/mood" && req.method === "POST") {
 			let body = "";
 			req.on("data", chunk => body += chunk);
