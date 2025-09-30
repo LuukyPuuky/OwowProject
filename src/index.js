@@ -81,13 +81,13 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillRect(0, 0, width, height);
 
   // --- DVD Text Animation ---
-  ctx.font = "20px monospace";
+  ctx.font = "15px monospace";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
   const metrics = ctx.measureText(dvd.text);
   const textW = metrics.width;
-  const textH = height * dvd.size;
+  const textH = 20;
 
   // Move text
   dvd.x += dvd.vx;
