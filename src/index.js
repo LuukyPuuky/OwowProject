@@ -63,11 +63,10 @@ let frameCount = 0; // For animation
 let dvd = {
   x: width / 2,
   y: height / 2,
-  vx: 2,
-  vy: 2,
+  vx: 0.7,
+  vy: 0.7,
   size: 0.15, // relative size of logo
-  color: "#fff",
-  colors: ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"],
+  color: "#fff" // White for black & white display
 };
 
 ticker.start(({ deltaTime, elapsedTime }) => {
@@ -91,27 +90,23 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   dvd.y += dvd.vy;
 
   // Bounce horizontally
-  if (dvd.x < 0) {
+  if (dvd.x <= 0) {
     dvd.x = 0;
-    dvd.vx *= -1;
-    dvd.color = dvd.colors[Math.floor(Math.random() * dvd.colors.length)];
+    dvd.vx = Math.abs(dvd.vx); // force right
   }
-  if (dvd.x + logoW > width) {
+  if (dvd.x + logoW >= width) {
     dvd.x = width - logoW;
-    dvd.vx *= -1;
-    dvd.color = dvd.colors[Math.floor(Math.random() * dvd.colors.length)];
+    dvd.vx = -Math.abs(dvd.vx); // force left
   }
 
   // Bounce vertically
-  if (dvd.y < 0) {
+  if (dvd.y <= 0) {
     dvd.y = 0;
-    dvd.vy *= -1;
-    dvd.color = dvd.colors[Math.floor(Math.random() * dvd.colors.length)];
+    dvd.vy = Math.abs(dvd.vy); // force down
   }
-  if (dvd.y + logoH > height) {
+  if (dvd.y + logoH >= height) {
     dvd.y = height - logoH;
-    dvd.vy *= -1;
-    dvd.color = dvd.colors[Math.floor(Math.random() * dvd.colors.length)];
+    dvd.vy = -Math.abs(dvd.vy); // force up
   }
 
   // Draw logo (rectangle with "DVD" text)
