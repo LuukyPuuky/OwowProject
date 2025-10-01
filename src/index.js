@@ -55,13 +55,12 @@ ctx.imageSmoothingEnabled = false;
 // Initialize ticker
 const ticker = new Ticker({ fps: FPS });
 
-// --- Announcement Board State ---
+// Announcement Board State
 const announcements = [
   "Welcome to the Office!",
   "Meeting at 3 PM in Conference Room A",
   "Lunch Special: Pizza Today",
-  "Happy Birthday, Alice!",
-  "Don't forget to submit your timesheets!"
+
 ];
 
 let currentIndex = 0;
@@ -82,15 +81,18 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // --- Draw Current Announcement ---
+  // Draw Current Announcement 
   const text = announcements[currentIndex];
-  ctx.font = "15px monospace";
+  ctx.font = "20px monospace";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
   const metrics = ctx.measureText(text);
   const textW = metrics.width;
+  const textH = 24;
+
+  const y = height / 2;
 
   ctx.fillText(text, xPos, height / 2 - 10);
 
@@ -100,7 +102,7 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   // Move to next announcement when current one scrolls off screen
   if (xPos + textW < 0) {
     currentIndex = (currentIndex + 1) % announcements.length;
-    xPos = width; // reset position
+    xPos = width; 
   }
 
   // Convert image to binary for flipdot
