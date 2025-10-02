@@ -1,10 +1,10 @@
-import { Ticker } from "./ticker.js";
-import { createCanvas, registerFont } from "canvas";
+import express from "express";
+import multer from "multer";
+import { createCanvas, loadImage } from "canvas";
 import fs from "node:fs";
 import path from "node:path";
 import { FPS, LAYOUT } from "./settings.js";
 import { Display } from "@owowagency/flipdot-emu";
-import "./preview.js";
 
 const IS_DEV = process.argv.includes("--dev");
 
@@ -28,109 +28,66 @@ const display = new Display({
 
 const { width, height } = display;
 
-// Create output directory if it doesn't exist
-const outputDir = "./output";
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true });
-}
+// Express setup
+const app = express();
+const upload = multer({ dest: "uploads/" });
 
-// Register fonts
-registerFont(
-  path.resolve(import.meta.dirname, "../fonts/OpenSans-Variable.ttf"),
-  { family: "OpenSans" }
-);
-registerFont(
-  path.resolve(import.meta.dirname, "../fonts/PPNeueMontrealMono-Regular.ttf"),
-  { family: "PPNeueMontreal" }
-);
-registerFont(path.resolve(import.meta.dirname, "../fonts/Px437_ACM_VGA.ttf"), {
-  family: "Px437_ACM_VGA",
-});
+app.post("/upload", upload.single("image"), async (req, res) => {
+  try {
+    const filePath = req.file.path;
 
-// Create canvas
-const canvas = createCanvas(width, height);
-const ctx = canvas.getContext("2d");
-ctx.imageSmoothingEnabled = false;
+    // Load and resize image to fit flipdot dimensions
+    const img = await loadImage(filePath);
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, width, height);
 
-// Initialize ticker
-const ticker = new Ticker({ fps: FPS });
-
-// Announcement Board State
-
-// Current Projects Board
-
-const projects = [
-  { title: "Website Redesign", status: "In Progress", owner: "Alice" },
-  { title: "Mobile App Launch", status: "Testing", owner: "Bob" },
-  { title: "AI Dashboard", status: "Review", owner: "Charlie" },
-  { title: "Backend Upgrade", status: "Completed", owner: "DevOps" },
-];
-
-let currentIndex = 0;
-let xPos = width;
-
-// Scrolling speed in pixels per frame
-const SCROLL_SPEED = 1;
-
-ticker.start(() => {
-  console.clear();
-  console.time("Write frame");
-  console.log(`Rendering a ${width}x${height} flipdot project board`);
-  console.log("View at http://localhost:3000/view");
-
-  ctx.clearRect(0, 0, width, height);
-
-  // Background
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, width, height);
-
-  // Current Project
-  const project = projects[currentIndex];
-  const text = `${project.title} - ${project.status} (${project.owner})`;
-
-  ctx.font = "bold 18px OpenSans";
-  ctx.fillStyle = "#fff";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-
-  const metrics = ctx.measureText(text);
-  const textW = metrics.width;
-
-  ctx.fillText(text, xPos, height / 2 - 10);
-
-  // Scroll left
-  xPos -= SCROLL_SPEED;
-
-  // Move to next project when current one scrolls off screen
-  if (xPos + textW < 0) {
-    currentIndex = (currentIndex + 1) % projects.length;
-    xPos = width;
-  }
-
-  // Convert image to binary for flipdot
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const data = imageData.data;
-  for (let i = 0; i < data.length; i += 4) {
-    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    const binary = brightness > 127 ? 255 : 0;
-    data[i] = binary;
-    data[i + 1] = binary;
-    data[i + 2] = binary;
-    data[i + 3] = 255;
-  }
-  ctx.putImageData(imageData, 0, 0);
-
-  if (IS_DEV) {
-    const filename = path.join(outputDir, "frame.png");
-    const buffer = canvas.toBuffer("image/png");
-    fs.writeFileSync(filename, buffer);
-  } else {
-    const imageData = ctx.getImageData(0, 0, display.width, display.height);
-    display.setImageData(imageData);
-    if (display.isDirty()) {
-      display.flush();
+    // Convert image to black & white
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      const binary = brightness > 127 ? 255 : 0;
+      data[i] = binary;
+      data[i + 1] = binary;
+      data[i + 2] = binary;
+      data[i + 3] = 255;
     }
-  }
+    ctx.putImageData(imageData, 0, 0);
 
-  console.timeEnd("Write frame");
+    if (IS_DEV) {
+      // Save processed image for preview
+      const outPath = path.join("./output", "uploaded.png");
+      fs.writeFileSync(outPath, canvas.toBuffer("image/png"));
+      console.log("Saved processed image to", outPath);
+    } else {
+      // Send to flipdot hardware
+      display.setImageData(imageData);
+      if (display.isDirty()) {
+        display.flush();
+      }
+    }
+
+    res.json({ success: true, message: "Image uploaded and displayed!" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
+
+// Simple upload form
+app.get("/", (req, res) => {
+  res.send(`
+    <form action="/upload" method="post" enctype="multipart/form-data">
+      <input type="file" name="image" />
+      <button type="submit">Upload</button>
+    </form>
+  `);
+});
+
+// Start server
+const PORT = 4000;
+app.listen(PORT, () => {
+  console.log(`Flipdot image uploader running at http://localhost:${PORT}`);
+});
+ 
