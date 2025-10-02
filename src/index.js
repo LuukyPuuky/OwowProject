@@ -83,7 +83,7 @@ ticker.start(({ deltaTime, elapsedTime }) => {
 
   // Draw Current Announcement 
   const text = announcements[currentIndex];
-  ctx.font = "20px monospace";
+  ctx.font = "bold 20px monospace";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
