@@ -56,11 +56,14 @@ ctx.imageSmoothingEnabled = false;
 const ticker = new Ticker({ fps: FPS });
 
 // Announcement Board State
-const announcements = [
-  "Welcome to the Office!",
-  "Meeting at 3 PM in Conference Room A",
-  "Lunch Special: Pizza Today",
 
+// Current Projects Board
+
+const projects = [
+  { title: "Website Redesign", status: "In Progress", owner: "Alice" },
+  { title: "Mobile App Launch", status: "Testing", owner: "Bob" },
+  { title: "AI Dashboard", status: "Review", owner: "Charlie" },
+  { title: "Backend Upgrade", status: "Completed", owner: "DevOps" },
 ];
 
 let currentIndex = 0;
@@ -69,10 +72,10 @@ let xPos = width;
 // Scrolling speed in pixels per frame
 const SCROLL_SPEED = 1;
 
-ticker.start(({ deltaTime, elapsedTime }) => {
+ticker.start(() => {
   console.clear();
   console.time("Write frame");
-  console.log(`Rendering a ${width}x${height} flipdot announcement board`);
+  console.log(`Rendering a ${width}x${height} flipdot project board`);
   console.log("View at http://localhost:3000/view");
 
   ctx.clearRect(0, 0, width, height);
@@ -81,28 +84,27 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, width, height);
 
-  // Draw Current Announcement 
-  const text = announcements[currentIndex];
-  ctx.font = "bold 20px monospace";
+  // Current Project
+  const project = projects[currentIndex];
+  const text = `${project.title} - ${project.status} (${project.owner})`;
+
+  ctx.font = "bold 18px OpenSans";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
 
   const metrics = ctx.measureText(text);
   const textW = metrics.width;
-  const textH = 24;
-
-  const y = height / 2;
 
   ctx.fillText(text, xPos, height / 2 - 10);
 
   // Scroll left
   xPos -= SCROLL_SPEED;
 
-  // Move to next announcement when current one scrolls off screen
+  // Move to next project when current one scrolls off screen
   if (xPos + textW < 0) {
-    currentIndex = (currentIndex + 1) % announcements.length;
-    xPos = width; 
+    currentIndex = (currentIndex + 1) % projects.length;
+    xPos = width;
   }
 
   // Convert image to binary for flipdot
@@ -131,4 +133,4 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   }
 
   console.timeEnd("Write frame");
-})
+});
