@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { PixelDisplay } from "../components/pixel-display";
@@ -10,8 +11,16 @@ interface AnimationCardProps {
 }
 
 export function AnimationCard({ title, status }: AnimationCardProps) {
+  const [isEquipped, setIsEquipped] = useState(false);
+
+  const handleCardClick = () => {
+    setIsEquipped(!isEquipped);
+  };
   return (
-    <div className="border border-border rounded-lg bg-card overflow-hidden group hover:border-muted-foreground/50 transition-colors">
+    <div 
+      className="border-3 border-border rounded-lg bg-card overflow-hidden group hover:border-muted-foreground/50 transition-colors cursor-pointer"
+      onClick={handleCardClick}
+    >
       <div className="p-4">
         <div className="flex justify-end mb-2">
           <Button
@@ -28,8 +37,15 @@ export function AnimationCard({ title, status }: AnimationCardProps) {
         </div>
 
         <div className="space-y-2">
-          <h3 className="font-medium text-foreground text-center">{title}</h3>
-          <p className="text-sm text-muted-foreground text-center">{status}</p>
+          <h3 className="font-medium text-muted-foreground text-center">{title}</h3>
+          <div className="text-center">
+            <span 
+              className="text-sm font-medium"
+              style={{ color: isEquipped ? '#494949' : '#707070' }}
+            >
+              {isEquipped ? 'Equipped' : 'Equip'}
+            </span>
+          </div>
         </div>
       </div>
     </div>

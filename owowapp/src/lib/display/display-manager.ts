@@ -1,4 +1,5 @@
 import "server-only";
+import { createCanvas, Canvas } from "canvas";
 import type {
   DisplayConfig,
   AnimationFrame,
@@ -6,33 +7,21 @@ import type {
 } from "././types";
 
 export class DisplayManager {
-  private canvas: HTMLCanvasElement | OffscreenCanvas;
-  private ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  private canvas: Canvas;
+  private ctx: any;
   private config: DisplayConfig;
   private currentRenderer: AnimationRenderer | null = null;
 
   constructor(config: DisplayConfig) {
     this.config = config;
 
-    // Use OffscreenCanvas if available (better for server-side rendering in modern environments)
-    if (typeof OffscreenCanvas !== "undefined") {
-      this.canvas = new OffscreenCanvas(config.width, config.height);
-      this.ctx = this.canvas.getContext("2d")!;
-    } else if (typeof document !== "undefined") {
-      // Fallback to regular canvas in browser environment
-      this.canvas = document.createElement("canvas");
-      this.canvas.width = config.width;
-      this.canvas.height = config.height;
-      this.ctx = this.canvas.getContext("2d")!;
-    } else {
-      throw new Error("Canvas not available in this environment");
-    }
+    // Use server-side canvas from 'canvas' package
+    this.canvas = createCanvas(config.width, config.height);
+    this.ctx = this.canvas.getContext("2d");
 
     // Disable anti-aliasing for pixel-perfect rendering
     this.ctx.imageSmoothingEnabled = false;
-    if ("textBaseline" in this.ctx) {
-      this.ctx.textBaseline = "top";
-    }
+    this.ctx.textBaseline = "top";
   }
 
   setRenderer(renderer: AnimationRenderer) {
@@ -69,17 +58,8 @@ export class DisplayManager {
 
     ctx.putImageData(imageData, 0, 0);
 
-    // Convert canvas to buffer
-    if (this.canvas instanceof OffscreenCanvas) {
-      const blob = await this.canvas.convertToBlob({ type: "image/png" });
-      const arrayBuffer = await blob.arrayBuffer();
-      return Buffer.from(arrayBuffer);
-    } else {
-      // For regular canvas, use toDataURL and convert to buffer
-      const dataUrl = (this.canvas as HTMLCanvasElement).toDataURL("image/png");
-      const base64 = dataUrl.split(",")[1];
-      return Buffer.from(base64, "base64");
-    }
+    // Convert canvas to buffer using server-side canvas
+    return this.canvas.toBuffer("image/png");
   }
 
   getConfig() {

@@ -1,4 +1,10 @@
 {
+  "scripts": {
+    "dev": "cd owowapp && npm run dev",
+    "build": "cd owowapp && npm run build",
+    "start": "cd owowapp && npm run start",
+    "lint": "cd owowapp && npm run lint"
+  },
   "dependencies": {
     "lucide-react": "^0.544.0"
   }
