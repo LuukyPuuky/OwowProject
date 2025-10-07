@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
-  generator: "v0.app",
+  title: "Owow App",
+  description: "Owow App Animation Hub",
+  generator: "next.js",
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body style={{ backgroundColor: '#161616' }}>{children}</body>
+      <body style={{ backgroundColor: "#161616" }}>{children}</body>
     </html>
   );
 }
