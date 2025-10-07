@@ -52,18 +52,41 @@ app.post("/upload", upload.single("image"), async (req, res) => {
 
     ctx.drawImage(img, 0, 0, width, height);
 
-    // Convert to black & white
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      const binary = brightness > 127 ? 255 : 0;
-      data[i] = binary;
-      data[i + 1] = binary;
-      data[i + 2] = binary;
-      data[i + 3] = 255;
-    }
-    ctx.putImageData(imageData, 0, 0);
+ // Convert to black & white using Floyd–Steinberg dithering
+const imageData = ctx.getImageData(0, 0, width, height);
+const data = imageData.data;
+
+for (let y = 0; y < height; y++) {
+  for (let x = 0; x < width; x++) {
+    const i = (y * width + x) * 4;
+    const oldPixel = data[i];
+    const newPixel = oldPixel < 128 ? 0 : 255;
+    const error = oldPixel - newPixel;
+
+    // set pixel
+    data[i] = data[i + 1] = data[i + 2] = newPixel;
+    data[i + 3] = 255;
+
+    // distribute the error to neighboring pixels
+    const distribute = (dx, dy, factor) => {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) return;
+      const ni = (ny * width + nx) * 4;
+      data[ni] += error * factor;
+      data[ni + 1] += error * factor;
+      data[ni + 2] += error * factor;
+    };
+
+    distribute(1, 0, 7 / 16);
+    distribute(-1, 1, 3 / 16);
+    distribute(0, 1, 5 / 16);
+    distribute(1, 1, 1 / 16);
+  }
+}
+
+ctx.putImageData(imageData, 0, 0);
+
 
     // Save image for preview
     const outPath = path.join(outputDir, "uploaded.png");
