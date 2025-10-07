@@ -40,33 +40,30 @@ export function PixelDisplay({
   return (
     <div
       className="flex items-center justify-center"
-      style={{
-        width: 80 * scale,
-        height: 20 * scale,
-      }}
+      style={{ width: 80 * scale, height: 20 * scale }}
     >
-      {isLoading && (
+      {isLoading ? (
         <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin" />
           <span className="text-xs">Loading...</span>
         </div>
+      ) : (
+        <Image
+          width={80 * scale}
+          height={20 * scale}
+          src={frameUrl}
+          alt="Pixel display"
+          style={{
+            width: 80 * scale,
+            height: 20 * scale,
+            imageRendering: "pixelated",
+          }}
+          className="object-contain"
+          unoptimized={frameUrl.startsWith("/api/preview")}
+          onLoad={() => setIsLoading(false)}
+          onError={() => setIsLoading(false)}
+        />
       )}
-
-      <Image
-        width={80 * scale}
-        height={20 * scale}
-        src={frameUrl}
-        alt="Pixel display"
-        style={{
-          width: 80 * scale,
-          height: 20 * scale,
-          imageRendering: "pixelated",
-        }}
-        className="object-contain"
-        unoptimized={frameUrl.startsWith("/api/preview")}
-        onLoad={() => setIsLoading(false)}
-        onError={() => setIsLoading(false)}
-      />
     </div>
   );
 }
