@@ -49,8 +49,11 @@ app.post("/upload", upload.single("image"), async (req, res) => {
     const img = await loadImage(filePath);
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
-
+    
+    // Slight blur + contrast boost 
+    ctx.filter = "blur(0.5px) contrast(1.3)";
     ctx.drawImage(img, 0, 0, width, height);
+    ctx.filter = "none";
 
  // Convert to black & white using Floyd–Steinberg dithering
 const imageData = ctx.getImageData(0, 0, width, height);
@@ -87,10 +90,10 @@ for (let y = 0; y < height; y++) {
 
 ctx.putImageData(imageData, 0, 0);
 
-
-    // Save image for preview
+    // Save processed black/white image
     const outPath = path.join(outputDir, "uploaded.png");
     fs.writeFileSync(outPath, canvas.toBuffer("image/png"));
+
 
     if (!IS_DEV) {
       // Send to flipdot hardware
