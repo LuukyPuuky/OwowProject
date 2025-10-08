@@ -14,11 +14,11 @@ export function Sidebar({ searchQuery, onSearchChange }: SidebarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isFavouritesOpen, setIsFavouritesOpen] = useState(false);
   return (
-    <aside className="w-[400px] flex flex-col" style={{ backgroundColor: '#1f1f1f' }}>
+    <aside className="w-[400px] flex flex-col bg-card">
       {/* Logo */}
       <div className="p-6 ">
-        <div className="px-4 py-3 bg-secondary rounded-lg">
-          <span className="text-muted-foreground font-medium">Logo</span>
+        <div className="px-4 py-3 rounded-lg bg-background">
+          <span className="text-muted-foreground font-medium ">Logo</span>
         </div>
       </div>
 
@@ -31,7 +31,7 @@ export function Sidebar({ searchQuery, onSearchChange }: SidebarProps) {
             placeholder="Search ..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 bg-secondary border-border text-foreground placeholder:text-muted-foreground"
+            className="pl-10 bg-background border-border text-foreground placeholder:text-muted-foreground"
           />
         </div>
       </div>
@@ -39,7 +39,7 @@ export function Sidebar({ searchQuery, onSearchChange }: SidebarProps) {
       {/* Preview Section */}
       <div className="flex-1 overflow-hidden">
         <div className="p-6">
-          <button 
+          <button
             onClick={() => setIsPreviewOpen(!isPreviewOpen)}
             className="w-full flex items-center justify-between text-sm font-medium mb-4 text-muted-foreground"
           >
@@ -62,7 +62,9 @@ export function Sidebar({ searchQuery, onSearchChange }: SidebarProps) {
               </div>
 
               <div className="border-3 border-border rounded-lg p-4 space-y-2">
-                <h3 className="font-medium text-muted-foreground">Star animation</h3>
+                <h3 className="font-medium text-muted-foreground">
+                  Star animation
+                </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Displays a star that moves in different directions
                 </p>
@@ -73,7 +75,7 @@ export function Sidebar({ searchQuery, onSearchChange }: SidebarProps) {
 
         {/* Favourites Section */}
         <div className="px-6 pb-6">
-          <button 
+          <button
             onClick={() => setIsFavouritesOpen(!isFavouritesOpen)}
             className="w-full flex items-center justify-between text-sm font-medium text-muted-foreground"
           >
@@ -87,7 +89,7 @@ export function Sidebar({ searchQuery, onSearchChange }: SidebarProps) {
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             )}
           </button>
-          
+
           {/* Favourites Content */}
           {isFavouritesOpen && (
             <div className="mt-4 space-y-2">
