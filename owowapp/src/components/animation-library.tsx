@@ -7,6 +7,7 @@ import { TopBar } from "@/components/top-bar";
 
 export function AnimationLibrary() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const startDefaultAnimation = async () => {
@@ -26,10 +27,15 @@ export function AnimationLibrary() {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
-      <Sidebar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+      <Sidebar 
+        searchQuery={searchQuery} 
+        onSearchChange={setSearchQuery}
+        isCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
       <main className="flex-1 flex flex-col overflow-hidden">
-        <TopBar />
-        <AnimationGrid searchQuery={searchQuery} />
+        <TopBar onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
+        <AnimationGrid searchQuery={searchQuery} isSidebarCollapsed={isSidebarCollapsed} />
       </main>
     </div>
   );
