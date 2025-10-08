@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       animationId,
     });
   } catch (error) {
-    console.error("[v0] Error starting animation:", error);
+    console.error("Error starting animation:", error);
     return NextResponse.json(
       {
         error: "Failed to start animation",
