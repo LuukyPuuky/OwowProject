@@ -50,10 +50,39 @@ app.post("/upload", upload.single("image"), async (req, res) => {
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
     
-    // Slight blur + contrast boost 
-    ctx.filter = "blur(0.5px) contrast(1.3)";
-    ctx.drawImage(img, 0, 0, width, height);
-    ctx.filter = "none";
+  // Apply small blur + contrast boost
+ctx.filter = "blur(0.5px) contrast(1.3)";
+
+// Calculate aspect ratio
+const imgAspect = img.width / img.height;
+const displayAspect = width / height;
+
+let drawWidth, drawHeight, offsetX, offsetY;
+
+if (imgAspect > displayAspect) {
+  // Image is wider than display
+  drawWidth = width;
+  drawHeight = width / imgAspect;
+  offsetX = 0;
+  offsetY = (height - drawHeight) / 2;
+} else {
+  // Image is taller than display
+  drawHeight = height;
+  drawWidth = height * imgAspect;
+  offsetX = (width - drawWidth) / 2;
+  offsetY = 0;
+}
+
+// Fill background (optional, for black border)
+ctx.fillStyle = "black";
+ctx.fillRect(0, 0, width, height);
+
+// Draw centered image with correct proportions
+ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+
+// Reset filter
+ctx.filter = "none";
+
 
  // Convert to black & white using Floyd–Steinberg dithering
 const imageData = ctx.getImageData(0, 0, width, height);
