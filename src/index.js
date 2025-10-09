@@ -211,7 +211,7 @@ async function fetchActiveScene(){
             req.on('error', () => resolve({}));
             req.end();
         });
-        if (scene === 'mood' || scene === 'clock' || scene === 'demo2' || scene === 'tally') SCENE = scene;
+        if (scene === 'mood' || scene === 'clock' || scene === 'demo2' || scene === 'tally' || scene === 'fact' || scene === 'next' || scene === 'anim') SCENE = scene;
     }catch{}
     return SCENE;
 }
@@ -257,6 +257,11 @@ function renderScene({ scene, ctx, width, height, elapsedTime }) {
 		return;
 	}
 
+	if (scene === 'next') {
+		// handled in main loop as well (fetches /next)
+		return;
+	}
+
     // no-op for other scenes
 
 	// default scene: mood faces
@@ -285,6 +290,13 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 
 	// Render scene based on current selection
 	const currentScene = await fetchActiveScene();
+	// Reset per-scene state on change to prevent stale visuals
+	if (globalThis.__scenePrev !== currentScene) {
+		globalThis.__scenePrev = currentScene;
+		if (globalThis.__runnerFall) delete globalThis.__runnerFall;
+		// reset fact loading state lightly so it can fetch soon
+		if (globalThis.__factCache) { globalThis.__factCache.loading = false; globalThis.__factCache.nextAt = 0; }
+	}
 	if (currentScene === 'tally') {
 		// fetch tally game state
 		const { a, b, lastTs } = await new Promise(resolve => {
@@ -431,10 +443,10 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 				globalThis.__runnerFall.fallPhase = phaseEff; // freeze scroll so hole stays under the dot
 				// persist the on-screen hole span from the mask, expanded to the player footprint
 				let x0 = Math.max(0, playerX - 2), x1 = Math.min(width - 1, playerX + 2);
-				while (x0 > 0 && holeMask[x0 - 1]) x0--;
-				while (x1 < width - 1 && holeMask[x1 + 1]) x1++;
-				globalThis.__runnerFall.holeX0 = x0;
-				globalThis.__runnerFall.holeX1 = x1;
+                while (x0 > 0 && holeMask[x0 - 1]) x0--;
+                while (x1 < width - 1 && holeMask[x1 + 1]) x1++;
+                globalThis.__runnerFall.holeX0 = x0;
+                globalThis.__runnerFall.holeX1 = x1;
 				// notify server to stop the game (game over)
 				try {
 					await new Promise(resolve => {
@@ -462,6 +474,149 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 			const m = ctx.measureText(msg);
 			ctx.fillText(msg, Math.max(1, Math.floor((width - m.width) / 2)), 1);
 		}
+	} else if (currentScene === 'fact') {
+ 		if (!globalThis.__factCache) globalThis.__factCache = { text: '', nextAt: 0, loading: false };
+		if (Date.now() > globalThis.__factCache.nextAt && !globalThis.__factCache.loading) {
+ 			globalThis.__factCache.loading = true;
+			globalThis.__factCache.nextAt = Date.now() + 30000; // give more time to read before next fetch
+ 			// fire-and-forget fetch to avoid blocking the frame
+ 			(async () => {
+ 				try {
+ 					const controller = new AbortController();
+ 					const t = setTimeout(() => controller.abort(), 4000);
+ 					const res = await fetch('https://uselessfacts.jsph.pl/random.json?language=en', {
+ 						headers: { 'Accept': 'application/json', 'User-Agent': 'flipdots/1.0 (+https://localhost)' },
+ 						signal: controller.signal,
+ 					});
+ 					clearTimeout(t);
+ 					if (res.ok) {
+ 						const j = await res.json();
+ 						globalThis.__factCache.text = String((j && j.text) || '').trim();
+ 					} else {
+ 						globalThis.__factCache.text = 'FACT FETCH FAILED';
+ 					}
+ 				} catch (e) {
+ 					if (!globalThis.__factCache.text) globalThis.__factCache.text = 'FACT FETCH FAILED';
+ 				} finally {
+ 					globalThis.__factCache.loading = false;
+ 				}
+ 			})();
+ 		}
+ 		let fact = globalThis.__factCache.text;
+ 		if (!fact) fact = globalThis.__factCache.loading ? 'LOADING…' : 'NO FACT';
+ 		// scrolling marquee right -> left
+ 		if (!globalThis.__factScroll) globalThis.__factScroll = { x: 0, w: 0, text: '', lastTs: 0 };
+ 		ctx.fillStyle = '#fff';
+ 		ctx.font = '10px Px437_ACM_VGA';
+ 		// if text changed, recompute width and reset
+ 		if (globalThis.__factScroll.text !== fact) {
+ 			globalThis.__factScroll.text = fact;
+ 			globalThis.__factScroll.w = Math.ceil(ctx.measureText(fact).width);
+ 			globalThis.__factScroll.x = width;
+ 			globalThis.__factScroll.lastTs = elapsedTime;
+ 		}
+ 		const speedPxPerSec = Math.max(2, Math.floor(width * 0.18)); // a bit faster
+ 		const dtSec = Math.max(0, (elapsedTime - (globalThis.__factScroll.lastTs || elapsedTime)) / 1000);
+ 		globalThis.__factScroll.lastTs = elapsedTime;
+ 		globalThis.__factScroll.x -= speedPxPerSec * dtSec;
+ 		if (globalThis.__factScroll.x < -globalThis.__factScroll.w) {
+ 			globalThis.__factScroll.x = width;
+ 		}
+ 		const y = Math.floor(height / 2 - 8); // iets hoger door grotere tekst
+ 		const x1 = Math.floor(globalThis.__factScroll.x);
+ 		ctx.fillText(fact, x1, y);
+ 		// draw second copy to avoid gap when wrapping
+ 		const x2 = x1 + globalThis.__factScroll.w + 8;
+		if (x2 > -globalThis.__factScroll.w) ctx.fillText(fact, x2, y);
+	} else if (currentScene === 'next') {
+		// fetch current next name
+		const { name } = await new Promise(resolve => {
+			const req = http.request({ hostname: '127.0.0.1', port: 3000, path: '/next', method: 'GET' }, res => {
+				let data = '';
+				res.on('data', c => data += c);
+				res.on('end', () => { try { const j = JSON.parse(data||'{}'); resolve({ name: String(j.name||'') }); } catch { resolve({ name: '' }); } });
+			});
+			req.on('error', () => resolve({ name: '' }));
+			req.end();
+		});
+		const title = 'WHO\u00A0IS\u00A0NEXT';
+		ctx.fillStyle = '#fff';
+		// Title
+		ctx.font = `${Math.max(8, Math.floor(height * 0.22))}px PPNeueMontreal`;
+		let m = ctx.measureText(title);
+		ctx.fillText(title, Math.max(1, Math.floor((width - m.width) / 2)), 1);
+		// Name big
+		const text = name || '—';
+		let lo = 8, hi = Math.max(12, Math.min(width, Math.floor(height * 0.9)));
+		let best = lo;
+		const padX = 4;
+		const availW = Math.max(1, width - padX * 2);
+		const availH = Math.max(1, height - Math.floor(height * 0.28) - 2);
+		while (lo <= hi) {
+			const midSize = Math.floor((lo + hi) / 2);
+			ctx.font = `${midSize}px PPNeueMontreal`;
+			m = ctx.measureText(text);
+			const fitsW = m.width <= availW;
+			const fitsH = midSize <= availH;
+			if (fitsW && fitsH) { best = midSize; lo = midSize + 1; } else { hi = midSize - 1; }
+		}
+		ctx.font = `${best}px PPNeueMontreal`;
+		m = ctx.measureText(text);
+		const tx = Math.max(1, Math.floor((width - m.width) / 2));
+		const ty = Math.max(1 + Math.floor(height * 0.28), Math.floor((height - best) / 2));
+		ctx.fillText(text, tx, ty);
+	} else if (currentScene === 'anim') {
+		// Animation scene: plays frames saved via /anim/state
+		if (!globalThis.__animCache) globalThis.__animCache = { w: 0, h: 0, frames: [], lastFetch: 0, fetchMs: 1000 };
+		const cache = globalThis.__animCache;
+		// Periodically refresh animation state (1s)
+		if ((Date.now() - cache.lastFetch) > cache.fetchMs) {
+			try{
+				cache.lastFetch = Date.now();
+				const { w, h, frames } = await new Promise(resolve => {
+					const req = http.request({ hostname: '127.0.0.1', port: 3000, path: '/anim/state', method: 'GET' }, res => {
+						let data = '';
+						res.on('data', c => data += c);
+						res.on('end', () => { try { resolve(JSON.parse(data||'{}')); } catch { resolve({}); } });
+					});
+					req.on('error', () => resolve({}));
+					req.end();
+				});
+				if (Array.isArray(frames) && frames.length) {
+					cache.w = Number(w)||width; cache.h = Number(h)||height;
+					cache.frames = frames.map(f => ({ bits: String(f.bits||''), durationMs: Math.max(10, Number(f.durationMs)||300) }));
+				}
+			}catch{}
+		}
+		// Ensure at least one frame
+		if (!cache.frames.length) {
+			// fallback: simple blinking box
+			const on = Math.floor((Date.now()/400)) % 2 === 0;
+			ctx.fillStyle = on ? '#fff' : '#000';
+			const s = Math.floor(Math.min(width, height) * 0.6);
+			ctx.fillRect(Math.floor((width-s)/2), Math.floor((height-s)/2), s, s);
+		} else {
+			// Advance through frames based on per-frame durations; keep local playhead
+			if (!cache.play) cache.play = { idx: 0, nextAt: 0 };
+			const nowMs = Date.now();
+			if (nowMs >= (cache.play.nextAt||0)) {
+				cache.play.idx = (cache.play.idx + 1) % cache.frames.length;
+				cache.play.nextAt = nowMs + (cache.frames[cache.play.idx].durationMs||300);
+			}
+			const fr = cache.frames[cache.play.idx];
+			// Draw bits to canvas; if stored size differs, scale to display size (nearest)
+			const fw = cache.w||width, fh = cache.h||height;
+			ctx.fillStyle = '#000'; ctx.fillRect(0,0,width,height);
+			ctx.fillStyle = '#fff';
+			for (let y=0;y<height;y++){
+				const sy = Math.floor(y * fh / height);
+				for (let x=0;x<width;x++){
+					const sx = Math.floor(x * fw / width);
+					const idxBit = sy * fw + sx;
+					if (fr.bits.charAt(idxBit) === '1') ctx.fillRect(x, y, 1, 1);
+				}
+			}
+		}
 	} else {
 		renderScene({ scene: currentScene, ctx, width, height, elapsedTime });
 	}
@@ -470,23 +625,30 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 	{
 		const imageData = ctx.getImageData(0, 0, width, height);
 		const data = imageData.data;
+		let bits = '';
 		for (let i = 0; i < data.length; i += 4) {
 			// Apply thresholding - any pixel above 127 brightness becomes white (255), otherwise black (0)
 			const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
-			const binary = brightness > 127 ? 255 : 0;
+			const isOn = brightness > 127 ? 1 : 0;
+			const binary = isOn ? 255 : 0;
 			data[i] = binary; // R
 			data[i + 1] = binary; // G
 			data[i + 2] = binary; // B
 			data[i + 3] = 255; // The board is not transparent :-)
+			bits += isOn ? '1' : '0';
 		}
 		ctx.putImageData(imageData, 0, 0);
+		// expose latest bits for preview server
+		globalThis.__frameBitmap = { w: width, h: height, bits };
 	}
 
+	// Always keep an in-memory PNG for preview servers
+	try { globalThis.__framePNG = canvas.toBuffer("image/png"); } catch {}
+
 	if (IS_DEV) {
-		// Save the canvas as a PNG file
+		// Save the canvas as a PNG file (dev convenience)
 		const filename = path.join(outputDir, "frame.png");
-		const buffer = canvas.toBuffer("image/png");
-		fs.writeFileSync(filename, buffer);
+		try { fs.writeFileSync(filename, globalThis.__framePNG); } catch {}
 	} else {
 		const imageData = ctx.getImageData(0, 0, display.width, display.height);
 		display.setImageData(imageData);
@@ -499,3 +661,4 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 	console.log(`Delta time: ${deltaTime.toFixed(2)}ms`);
 	console.timeEnd("Write frame");
 });
+
