@@ -17,6 +17,7 @@
 		"@owowagency/flipdot-emu": "file:packages/owowagency-flipdot-emu-1.0.0.tgz",
 		"canvas": "^3.1.0",
 		"express": "^5.1.0",
+		"gifuct-js": "^2.1.2",
 		"multer": "^2.0.2"
 	}
 }
