@@ -4,8 +4,7 @@ import { createCanvas, loadImage } from "canvas";
 import fs from "node:fs";
 import path from "node:path";
 import pkg from "gifuct-js";
-const { GIF } = pkg;
-
+const { parseGIF, decompressFrames } = pkg;
 import { FPS, LAYOUT } from "./settings.js";
 import { Display } from "@owowagency/flipdot-emu";
 
@@ -55,8 +54,9 @@ app.post("/upload", upload.single("image"), async (req, res) => {
 
     if (isGif) {
       console.log("Processing animated GIF...");
-      const gif = new GIF(buffer);
-      const frames = gif.decompressFrames(true);
+      const gif = parseGIF(buffer);
+      const frames = decompressFrames(gif, true);
+
 
       for (let i = 0; i < frames.length; i++) {
         const frame = frames[i];
