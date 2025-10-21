@@ -14,9 +14,14 @@ import {
 interface AnimationCardProps {
   title: string;
   status: string;
+  animationType?: string;
 }
 
-export function AnimationCard({ title, status }: AnimationCardProps) {
+export function AnimationCard({
+  title,
+  status,
+  animationType,
+}: AnimationCardProps) {
   const [isEquipped, setIsEquipped] = useState(false);
 
   const handleCardClick = () => {
@@ -46,34 +51,39 @@ export function AnimationCard({ title, status }: AnimationCardProps) {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer pointer-events-auto"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              align="end"
+              className="shadow-lg bg-card border-2 border-border "
+            >
               <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={(event) => {
+                  event.stopPropagation();
                   handleOption1();
                 }}
+                className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               >
-                Option 1
+                Add to Favorites
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={(event) => {
+                  event.stopPropagation();
                   handleOption2();
                 }}
+                className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground "
               >
-                Option 2
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
         <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
-          <PixelDisplay size="small" />
+          <PixelDisplay size="small" animationType={animationType} />
         </div>
 
         <div className="space-y-2">
