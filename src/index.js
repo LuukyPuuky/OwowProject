@@ -71,8 +71,8 @@ const ticker = new Ticker({ fps: FPS });
 // Helper: Draw a big dot-matrix style smiley (😃) on the canvas
 // White face, black eyes and mouth, with teeth; all monochrome, crisp for flipdots
 function drawSmiley({ ctx, width, height, elapsedTime }) {
-	// Animation: subtle pulse (scale 0.95–1.05)
-	const pulse = 1 + Math.sin(elapsedTime / 900) * 0.05;
+	// Animation: very subtle pulse (reduced amplitude)
+	const pulse = 1 + Math.sin(elapsedTime / 900) * 0.015;
 
 	// Compute centered square area to place the face
 	const size = Math.min(width, height) * 0.9 * pulse;
@@ -118,7 +118,7 @@ function drawSmiley({ ctx, width, height, elapsedTime }) {
 
 // Helper: Draw a sad face (🙁)
 function drawSad({ ctx, width, height, elapsedTime }) {
-	const pulse = 1 + Math.sin(elapsedTime / 1100) * 0.04;
+	const pulse = 1 + Math.sin(elapsedTime / 1100) * 0.012;
 	const size = Math.min(width, height) * 0.9 * pulse;
 	const cx = Math.floor(width / 2);
 	const cy = Math.floor(height / 2);
@@ -158,7 +158,7 @@ function drawSad({ ctx, width, height, elapsedTime }) {
 
 // Helper: Draw a neutral face (😐)
 function drawNeutral({ ctx, width, height, elapsedTime }) {
-	const pulse = 1 + Math.sin(elapsedTime / 1300) * 0.02;
+	const pulse = 1 + Math.sin(elapsedTime / 1300) * 0.006;
 	const size = Math.min(width, height) * 0.9 * pulse;
 	const cx = Math.floor(width / 2);
 	const cy = Math.floor(height / 2);
@@ -573,7 +573,7 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 		if ((Date.now() - cache.lastFetch) > cache.fetchMs) {
 			try{
 				cache.lastFetch = Date.now();
-				const { w, h, frames } = await new Promise(resolve => {
+				const { w, h, frames, name } = await new Promise(resolve => {
 					const req = http.request({ hostname: '127.0.0.1', port: 3000, path: '/anim/state', method: 'GET' }, res => {
 						let data = '';
 						res.on('data', c => data += c);
@@ -585,6 +585,7 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 				if (Array.isArray(frames) && frames.length) {
 					cache.w = Number(w)||width; cache.h = Number(h)||height;
 					cache.frames = frames.map(f => ({ bits: String(f.bits||''), durationMs: Math.max(10, Number(f.durationMs)||300) }));
+					cache.name = String(name||'');
 				}
 			}catch{}
 		}
@@ -614,6 +615,47 @@ ticker.start(async ({ deltaTime, elapsedTime }) => {
 					const sx = Math.floor(x * fw / width);
 					const idxBit = sy * fw + sx;
 					if (fr.bits.charAt(idxBit) === '1') ctx.fillRect(x, y, 1, 1);
+				}
+			}
+			// Optional text overlay tied to current animation
+			if (cache.name) {
+				if (!globalThis.__animText) globalThis.__animText = { x: 0, w: 0, lastTs: 0, text: '', lastPoll: 0 };
+				if (Date.now() - (globalThis.__animText.lastPoll||0) > 1400) {
+					globalThis.__animText.lastPoll = Date.now();
+					(async () => { try{
+						const pathQ = '/anim/text?name=' + encodeURIComponent(cache.name);
+						const { text } = await new Promise(resolve => {
+							const req = http.request({ hostname: '127.0.0.1', port: 3000, path: pathQ, method: 'GET' }, res => {
+								let data = '';
+								res.on('data', c => data += c);
+								res.on('end', () => { try { resolve(JSON.parse(data||'{}')); } catch { resolve({}); } });
+							});
+							req.on('error', () => resolve({}));
+							req.end();
+						});
+						if (typeof text === 'string') globalThis.__animText.text = text;
+					}catch{} })();
+				}
+				const overlay = String(globalThis.__animText.text||'').trim();
+				if (overlay) {
+					ctx.fillStyle = '#fff';
+					ctx.font = '10px Px437_ACM_VGA';
+					if (globalThis.__animText.msg !== overlay) {
+						globalThis.__animText.msg = overlay;
+						globalThis.__animText.w = Math.ceil(ctx.measureText(overlay).width);
+						globalThis.__animText.x = width;
+						globalThis.__animText.lastTs = elapsedTime;
+					}
+					const speed = Math.max(2, Math.floor(width * 0.16));
+					const dt = Math.max(0, (elapsedTime - (globalThis.__animText.lastTs||elapsedTime)) / 1000);
+					globalThis.__animText.lastTs = elapsedTime;
+					globalThis.__animText.x -= speed * dt;
+					if (globalThis.__animText.x < -globalThis.__animText.w) globalThis.__animText.x = width;
+					const y = Math.max(1, Math.floor(height - 10));
+					const x1 = Math.floor(globalThis.__animText.x);
+					ctx.fillText(overlay, x1, y);
+					const x2 = x1 + globalThis.__animText.w + 8;
+					if (x2 > -globalThis.__animText.w) ctx.fillText(overlay, x2, y);
 				}
 			}
 		}

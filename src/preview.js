@@ -1,4 +1,5 @@
 import http from "node:http";
+import https from "node:https";
 import fs from "node:fs";
 import url from "node:url";
 
@@ -89,7 +90,7 @@ function createHandler() {
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
           <label for="sceneSel">Scene:</label>
-          <select id="sceneSel">
+			<select id="sceneSel">
             <option value="mood">mood</option>
             <option value="clock">clock</option>
             <option value="demo2">demo2</option>
@@ -116,7 +117,7 @@ function createHandler() {
           <button id="tgReset">Reset</button>
           <span id="tgStatus" style="color:#333;display:inline-block;min-width:160px;height:20px;line-height:20px"></span>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
+			<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
           <strong>Ski:</strong>
           <button id="skiJump">Jump</button>
           <button id="skiStart">Start Game</button>
@@ -199,7 +200,7 @@ function createHandler() {
               if (txt) txt.textContent = url;
             }catch{}
           })();
-          async function refreshScene(){
+			async function refreshScene(){
             try{
               const r = await fetch('/scene');
               const j = await r.json();
@@ -357,7 +358,7 @@ function createHandler() {
 				try {
 					const data = JSON.parse(body || "{}");
 					const scene = String((data.scene || '')).toLowerCase();
-					if (scene === 'mood' || scene === 'clock' || scene === 'demo2' || scene === 'tally' || scene === 'fact' || scene === 'next' || scene === 'anim') {
+                    if (scene === 'mood' || scene === 'clock' || scene === 'demo2' || scene === 'tally' || scene === 'fact' || scene === 'next' || scene === 'anim') {
 						activeScene = scene;
 						res.writeHead(200, { "Content-Type": "application/json" });
 						res.end(JSON.stringify({ ok: true, scene: activeScene }));
@@ -370,7 +371,7 @@ function createHandler() {
 					res.end(JSON.stringify({ ok: false }));
 				}
 			});
-		} else if (parsed.pathname === "/anim" && req.method === "GET") {
+        } else if (parsed.pathname === "/anim" && req.method === "GET") {
 			res.writeHead(200, { "Content-Type": "text/html" });
 			res.end(`<!doctype html>
 <html>
@@ -385,6 +386,9 @@ function createHandler() {
       .grid{ display:grid; grid-auto-rows:12px; gap:2px; background:#111; padding:6px; }
       .cell{ width:12px; height:12px; background:#000; border-radius:2px; cursor:pointer; }
       .cell.on{ background:#fff; }
+      /* Onion skin ghosting */
+      .cell.prev:not(.on){ background:#333; }
+      .cell.next:not(.on){ background:#666; }
       .timeline{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
       .frameThumb{ display:grid; grid-template-columns: repeat(var(--w), 2px); grid-auto-rows:2px; gap:1px; padding:3px; background:#111; border:1px solid #333; cursor:pointer; }
       .frameThumb .p{ width:2px; height:2px; background:#000; }
@@ -392,25 +396,70 @@ function createHandler() {
       .badge{ font-size:11px; color:#555; }
       input[type=number]{ width:90px; }
       button{ padding:6px 10px; }
+      .seg{ display:inline-flex; background:#e8e8e8; border-radius:6px; overflow:hidden; }
+      .seg>button{ padding:6px 10px; border:0; background:transparent; }
+      .seg>button.active{ background:#0b5; color:#fff; }
+      .range{ display:inline-flex; align-items:center; gap:6px; }
+      input[type=range]{ width:120px; }
     </style>
   </head>
   <body>
     <h2 style="margin:0 0 10px">Animation Maker</h2>
     <div class="tools">
+      <span style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap">
+        <label for="animSel">Animation:</label>
+        <select id="animSel"></select>
+        <input id="animName" placeholder="Name" style="padding:4px 6px; width:160px" />
+        <button id="animNew">New</button>
+        <button id="animSaveAs">Save as</button>
+        <button id="animDelete" style="background:#c92a2a;color:white;border:1px solid #a61e1e">🗑️ Delete Animation</button>
+        <button id="animSetActive">Set Active</button>
+      </span>
       <button id="addFrame">Add Frame</button>
       <button id="dupFrame">Duplicate</button>
-      <button id="delFrame">Delete</button>
+      <button id="delFrame" style="background:#ff6b6b;color:white;border:1px solid #e63946">🗑️ Delete Frame</button>
       <label>Duration ms <input id="dur" type="number" min="10" step="10" value="300" /></label>
       <button id="play">Play</button>
       <button id="stop">Stop</button>
       <button id="save">Save</button>
       <span class="badge" id="sizeBadge"></span>
       <a href="/view?scene=anim" target="_blank" style="margin-left:auto">Open viewer ▶</a>
+      <span class="range" style="margin-left:8px">
+        <label for="brushSize">Brush</label>
+        <input id="brushSize" type="range" min="1" max="8" value="1" />
+      </span>
+      <span class="seg">
+        <button id="brushCircle" class="active" type="button">Circle</button>
+        <button id="brushSquare" type="button">Square</button>
+        <button id="brushTriangle" type="button">Triangle</button>
+      </span>
+      <span class="seg">
+        <button id="modePaint" class="active" type="button">Paint</button>
+        <button id="modeErase" type="button">Erase</button>
+      </span>
+      <div style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; padding:6px 8px; background:#efe; border-radius:8px; border:1px solid #cfc">
+        <strong style="font-size:12px">Onion</strong>
+        <label>Enable <input id="onionEnable" type="checkbox" /></label>
+        <label>Prev <input id="onionPrev" type="number" min="0" max="2" value="1" style="width:60px; padding:4px 6px" /></label>
+        <label>Next <input id="onionNext" type="number" min="0" max="2" value="0" style="width:60px; padding:4px 6px" /></label>
+      </div>
+      <div style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; padding:6px 8px; background:#eef; border-radius:8px; border:1px solid #cde">
+        <strong style="font-size:12px">Text feed (overlay)</strong>
+        <input id="textUrl" placeholder="https://... (text or JSON)" style="padding:4px 6px; width:260px" />
+        <label>Field <input id="textField" placeholder="message" style="padding:4px 6px; width:120px" /></label>
+        <label>Interval <input id="textInt" type="number" min="1000" step="500" value="30000" style="width:110px; padding:4px 6px" /></label>
+        <label>Enable <input id="textEnable" type="checkbox" /></label>
+        <button id="textSave">Save text</button>
+      </div>
     </div>
     <div class="wrap">
       <div id="grid" class="grid"></div>
       <div style="flex:1; min-width:260px">
         <div class="timeline" id="timeline"></div>
+      </div>
+      <div id="animSidebar" style="min-width:220px; flex:0 0 220px; display:flex; flex-direction:column; gap:8px">
+        <div style="font-weight:600;color:#333">Animations</div>
+        <div id="animList" style="display:flex; flex-direction:column; gap:6px; max-height:60vh; overflow:auto"></div>
       </div>
     </div>
     <script>
@@ -420,22 +469,107 @@ function createHandler() {
       const tl = document.getElementById('timeline');
       const durEl = document.getElementById('dur');
       const sizeBadge = document.getElementById('sizeBadge');
+      const brushSizeEl = document.getElementById('brushSize');
+      const modePaintBtn = document.getElementById('modePaint');
+      const modeEraseBtn = document.getElementById('modeErase');
+      const brushCircleBtn = document.getElementById('brushCircle');
+      const brushSquareBtn = document.getElementById('brushSquare');
+      const brushTriangleBtn = document.getElementById('brushTriangle');
+      const animListEl = document.getElementById('animList');
+      const onionEnableEl = document.getElementById('onionEnable');
+      const onionPrevEl = document.getElementById('onionPrev');
+      const onionNextEl = document.getElementById('onionNext');
+      const textUrlEl = document.getElementById('textUrl');
+      const textFieldEl = document.getElementById('textField');
+      const textIntEl = document.getElementById('textInt');
+      const textEnableEl = document.getElementById('textEnable');
+      const textSaveBtn = document.getElementById('textSave');
+      const animSel = document.getElementById('animSel');
+      const animNameInput = document.getElementById('animName');
       let frames = [];
       let idx = 0;
       let playing = false;
+      let isMouseDown = false;
+      let brushSize = 1; // radius in pixels
+      let brushMode = 'paint'; // 'paint' | 'erase'
+      let brushShape = 'circle'; // 'circle' | 'square' | 'triangle'
+      let currentName = '';
+      let textMeta = { enable:false, url:'', field:'', intervalMs:30000 };
+      let onionEnabled = false;
+      let onionPrev = 1;
+      let onionNext = 0;
       function bitsOf(arr){ return arr.map(v=>v?'1':'0').join(''); }
       function arrOf(bits){ const arr = new Array(W*H).fill(false); for(let i=0;i<arr.length && i<bits.length;i++){ arr[i] = bits.charAt(i)==='1'; } return arr; }
+      function applyBrushAt(index){
+        const arr = frames[idx]?.arr || new Array(W*H).fill(false);
+        const cx = index % W;
+        const cy = Math.floor(index / W);
+        const r = Math.max(0, brushSize - 1);
+        for (let dy = -r; dy <= r; dy++){
+          for (let dx = -r; dx <= r; dx++){
+            const nx = cx + dx; const ny = cy + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            let inside = false;
+            if (brushShape === 'circle') {
+              inside = (dx*dx + dy*dy) <= r*r;
+            } else if (brushShape === 'square') {
+              inside = Math.abs(dx) <= r && Math.abs(dy) <= r;
+            } else if (brushShape === 'triangle') {
+              // Isosceles triangle pointing up, apex at cy - r, base at cy + r
+              const yPrime = dy + r; // 0..2r inside vertical span
+              if (yPrime >= 0 && yPrime <= 2*r) {
+                const halfWidth = Math.floor((yPrime / Math.max(1, 2*r)) * r);
+                inside = Math.abs(dx) <= halfWidth;
+              }
+            }
+            if (!inside) continue;
+            const pi = ny * W + nx;
+            arr[pi] = (brushMode === 'paint');
+            const el = grid.children[pi];
+            if (el) el.classList.toggle('on', arr[pi]);
+          }
+        }
+      }
       function renderGrid(){
         grid.style.gridTemplateColumns = 'repeat(' + W + ',12px)';
         grid.innerHTML = '';
         const arr = frames[idx]?.arr || new Array(W*H).fill(false);
         for(let i=0;i<W*H;i++){
-          const d = document.createElement('div'); d.className = 'cell' + (arr[i]?' on':'');
-          d.onmousedown = (e)=>{ const on = !arr[i]; arr[i]=on; d.classList.toggle('on', on); };
-          d.onmouseover = (e)=>{ if (e.buttons===1){ const on = !arr[i]; arr[i]=on; d.classList.toggle('on', on); } };
+          const d = document.createElement('div'); d.className = 'cell' + (arr[i]?' on':''); d.dataset.idx = String(i);
+          d.onmousedown = (e)=>{ e.preventDefault(); isMouseDown = true; applyBrushAt(i); };
+          d.onmouseover = (e)=>{ if (isMouseDown){ applyBrushAt(i); } };
           grid.appendChild(d);
         }
         sizeBadge.textContent = W + '×' + H;
+        updateOnionSkins();
+      }
+      function updateOnionSkins(){
+        if (!grid) return;
+        if (!onionEnabled){
+          for (let i=0;i<grid.children.length;i++){ const el = grid.children[i]; el.classList.remove('prev'); el.classList.remove('next'); }
+          return;
+        }
+        const cur = frames[idx]?.arr || new Array(W*H).fill(false);
+        // compute aggregated prev/next ghost masks
+        const prevMask = new Array(W*H).fill(false);
+        const nextMask = new Array(W*H).fill(false);
+        for (let k=1;k<=onionPrev;k++){
+          const f = frames[idx - k]; if (!f) break; const a = f.arr;
+          for (let i=0;i<a.length;i++){ if (a[i]) prevMask[i] = true; }
+        }
+        for (let k=1;k<=onionNext;k++){
+          const f = frames[idx + k]; if (!f) break; const a = f.arr;
+          for (let i=0;i<a.length;i++){ if (a[i]) nextMask[i] = true; }
+        }
+        for (let i=0;i<grid.children.length;i++){
+          const el = grid.children[i];
+          if (!el) continue;
+          el.classList.remove('prev'); el.classList.remove('next');
+          if (!cur[i]){
+            if (prevMask[i]) el.classList.add('prev');
+            if (nextMask[i]) el.classList.add('next');
+          }
+        }
       }
       function renderTimeline(){
         tl.innerHTML='';
@@ -451,31 +585,144 @@ function createHandler() {
           tl.appendChild(t);
         });
       }
-      async function loadState(){ try{ const r = await fetch('/anim/state'); const j = await r.json(); if (j && Array.isArray(j.frames)) { if (j.w && j.h){ W=j.w; H=j.h; } frames = j.frames.map(fr=>({ dur: Number(fr.durationMs)||300, arr: arrOf(String(fr.bits||'')) })); if (!frames.length) frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx = Math.min(idx, frames.length-1); durEl.value=String(frames[idx].dur); } }catch{ frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx=0; }
+      async function loadState(name){ try{ const r = await fetch('/anim/state' + (name?('?name='+encodeURIComponent(name)):'') ); const j = await r.json(); if (j && Array.isArray(j.frames)) { if (j.w && j.h){ W=j.w; H=j.h; } frames = j.frames.map(fr=>({ dur: Number(fr.durationMs)||300, arr: arrOf(String(fr.bits||'')) })); if (!frames.length) frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx = Math.min(idx, frames.length-1); durEl.value=String(frames[idx].dur); currentName = String(j.name||'') || currentName; textMeta = { enable: !!(j.text && j.text.enable), url: String((j.text && j.text.url) || ''), field: String((j.text && j.text.field) || ''), intervalMs: Math.max(1000, Number(j.text && j.text.intervalMs) || 30000) }; textUrlEl.value = textMeta.url; textFieldEl.value = textMeta.field; textIntEl.value = String(textMeta.intervalMs); textEnableEl.checked = !!textMeta.enable; } }catch{ frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx=0; }
         renderGrid(); renderTimeline(); }
-      async function saveState(){ const payload = { w: W, h: H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })) }; try{ await fetch('/anim/state', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); }catch{} }
+      async function saveState(name){ const payload = { w: W, h: H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })), text: { enable: !!textEnableEl.checked, url: String(textUrlEl.value||'').trim(), field: String(textFieldEl.value||'').trim(), intervalMs: Math.max(1000, Number(textIntEl.value)||30000) } }; const q = name?('?name='+encodeURIComponent(name)) : ''; try{ await fetch('/anim/state'+q, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); }catch{} }
       document.getElementById('addFrame').onclick = ()=>{ frames.splice(idx+1, 0, { dur: Number(durEl.value)||300, arr: new Array(W*H).fill(false) }); idx++; renderTimeline(); renderGrid(); };
       document.getElementById('dupFrame').onclick = ()=>{ const cur = frames[idx]; frames.splice(idx+1, 0, { dur: cur.dur, arr: cur.arr.slice() }); idx++; renderTimeline(); renderGrid(); };
       document.getElementById('delFrame').onclick = ()=>{ if (!frames.length) return; frames.splice(idx,1); if (!frames.length) frames.push({ dur:300, arr:new Array(W*H).fill(false) }); idx = Math.min(idx, frames.length-1); renderTimeline(); renderGrid(); };
       durEl.onchange = ()=>{ const v = Math.max(10, Number(durEl.value)||300); frames[idx].dur = v; renderTimeline(); };
-      document.getElementById('save').onclick = ()=> saveState();
+      document.getElementById('save').onclick = ()=>{ const n = String(animSel.value||'').trim(); saveState(n||currentName); };
+      textSaveBtn.onclick = ()=>{ const n = String(animSel.value||'').trim(); saveState(n||currentName); };
       let playTimer = 0;
       document.getElementById('play').onclick = ()=>{ if (playing) return; playing = true; function step(){ if (!playing) return; idx = (idx + 1) % frames.length; durEl.value = String(frames[idx].dur); renderTimeline(); renderGrid(); playTimer = setTimeout(step, frames[idx].dur); } playTimer = setTimeout(step, frames[idx].dur); };
       document.getElementById('stop').onclick = ()=>{ playing=false; try{ clearTimeout(playTimer); }catch{} };
-      (async function init(){ await getLiveSize(); await loadState(); })();
+      // Animation management
+      function createPreviewGrid(container, Wsrc, Hsrc){
+        const scale = 2; // 2px cells
+        const Wt = Math.min(84, Wsrc);
+        const Ht = Math.min(28, Hsrc);
+        const root = document.createElement('div');
+        root.style.display = 'grid';
+        root.style.gridTemplateColumns = 'repeat(' + Wt + ', ' + scale + 'px)';
+        root.style.gridAutoRows = scale + 'px';
+        root.style.gap = '1px';
+        root.style.background = '#111';
+        root.style.padding = '4px';
+        root.style.border = '1px solid #333';
+        root.style.borderRadius = '4px';
+        const pixels = [];
+        for (let i=0;i<Wt*Ht;i++){ const d = document.createElement('div'); d.style.width = scale+'px'; d.style.height = scale+'px'; d.style.background = '#000'; pixels.push(d); root.appendChild(d); }
+        container.appendChild(root);
+        return { root, pixels, Wt, Ht };
+      }
+      function renderPreviewBits(preview, bits, Wsrc, Hsrc){
+        const { pixels, Wt, Ht } = preview;
+        for (let y=0;y<Ht;y++){
+          for (let x=0;x<Wt;x++){
+            const sx = Math.floor(x * Wsrc / Wt);
+            const sy = Math.floor(y * Hsrc / Ht);
+            const on = bits.charAt(sy * Wsrc + sx) === '1';
+            const el = pixels[y*Wt + x];
+            if (el) el.style.background = on ? '#fff' : '#000';
+          }
+        }
+      }
+      async function refreshAnimList(){
+        try{
+          const r = await fetch('/anim/list');
+          const j = await r.json();
+          if (!(j && Array.isArray(j.items))) return;
+          // dropdown
+          animSel.innerHTML='';
+          j.items.forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n; if (n===j.active) o.selected=true; animSel.appendChild(o); });
+          currentName = j.active||currentName||''; animNameInput.value = currentName;
+          // sidebar list with hover preview
+          animListEl.innerHTML = '';
+          j.items.forEach(name => {
+            const item = document.createElement('div');
+            item.style.display = 'flex';
+            item.style.alignItems = 'center';
+            item.style.justifyContent = 'space-between';
+            item.style.gap = '8px';
+            item.style.padding = '6px 8px';
+            item.style.border = '1px solid ' + (name===j.active ? '#0a4' : '#ddd');
+            item.style.borderRadius = '6px';
+            item.style.background = name===j.active ? '#eaffea' : '#fff';
+            item.style.cursor = 'pointer';
+            const label = document.createElement('div');
+            label.textContent = name;
+            label.style.flex = '1';
+            label.style.fontSize = '13px';
+            const previewWrap = document.createElement('div');
+            previewWrap.style.marginLeft = '6px';
+            const meta = { playing: false, timer: 0, frames: [], w: 0, h: 0, preview: null };
+            item.addEventListener('mouseenter', async ()=>{
+              if (meta.preview) return; // already built
+              try{
+                const rr = await fetch('/anim/state?name=' + encodeURIComponent(name));
+                const sj = await rr.json();
+                const frames = Array.isArray(sj.frames) ? sj.frames.slice(0, 30) : [];
+                meta.frames = frames.map(f=>({ bits: String(f.bits||''), dur: Math.max(10, Number(f.durationMs)||300) }));
+                meta.w = Number(sj.w)||84; meta.h = Number(sj.h)||28;
+                meta.preview = createPreviewGrid(previewWrap, meta.w, meta.h);
+                if (meta.frames.length){
+                  meta.playing = true;
+                  let i = 0;
+                  function step(){ if (!meta.playing) return; const fr = meta.frames[i]; renderPreviewBits(meta.preview, fr.bits, meta.w, meta.h); i = (i+1) % meta.frames.length; meta.timer = setTimeout(step, fr.dur); }
+                  step();
+                } else {
+                  meta.preview = meta.preview || createPreviewGrid(previewWrap, 84, 28);
+                }
+              }catch{}
+            });
+            item.addEventListener('mouseleave', ()=>{
+              meta.playing = false; try{ clearTimeout(meta.timer); }catch{}
+              previewWrap.innerHTML = '';
+              meta.preview = null;
+            });
+            item.addEventListener('click', async ()=>{ animSel.value = name; animNameInput.value = name; await loadState(name); });
+            item.appendChild(label);
+            item.appendChild(previewWrap);
+            animListEl.appendChild(item);
+          });
+        }catch{}
+      }
+      animSel.addEventListener('change', async ()=>{ const n = String(animSel.value||''); await loadState(n); animNameInput.value = n; });
+      document.getElementById('animNew').onclick = async ()=>{ const name = String(animNameInput.value||'').trim() || ('anim-'+Date.now()); frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx=0; await saveState(name); await fetch('/anim/select', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); await refreshAnimList(); await loadState(name); };
+      document.getElementById('animSaveAs').onclick = async ()=>{ const name = String(animNameInput.value||'').trim(); if (!name) return; await saveState(name); await refreshAnimList(); animSel.value = name; };
+      document.getElementById('animDelete').onclick = async ()=>{ const name = String(animSel.value||''); if (!name) return; try{ await fetch('/anim/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }catch{} await refreshAnimList(); const next = String(animSel.value||''); await loadState(next); };
+      document.getElementById('animSetActive').onclick = async ()=>{ const name = String(animSel.value||''); if (!name) return; try{ await fetch('/anim/select', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }catch{} await refreshAnimList(); };
+      (async function init(){ await getLiveSize(); await refreshAnimList(); await loadState(); })();
       // Save on unload to persist quick edits
-      window.addEventListener('beforeunload', ()=>{ try{ navigator.sendBeacon('/anim/state', new Blob([JSON.stringify({ w:W, h:H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })) })], { type:'application/json' })); }catch{} });
+      window.addEventListener('beforeunload', ()=>{ try{ const n = String(animSel && animSel.value || ''); navigator.sendBeacon('/anim/state' + (n?('?name='+encodeURIComponent(n)):'') , new Blob([JSON.stringify({ w:W, h:H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })), text: { enable: !!textEnableEl.checked, url: String(textUrlEl.value||'').trim(), field: String(textFieldEl.value||'').trim(), intervalMs: Math.max(1000, Number(textIntEl.value)||30000) } })], { type:'application/json' })); }catch{} });
+      // Brush UI
+      brushSizeEl.addEventListener('input', ()=>{ brushSize = Math.max(1, Number(brushSizeEl.value)||1); });
+      modePaintBtn.addEventListener('click', ()=>{ brushMode = 'paint'; modePaintBtn.classList.add('active'); modeEraseBtn.classList.remove('active'); });
+      modeEraseBtn.addEventListener('click', ()=>{ brushMode = 'erase'; modeEraseBtn.classList.add('active'); modePaintBtn.classList.remove('active'); });
+      window.addEventListener('mouseup', ()=>{ isMouseDown = false; });
+      // Brush shape UI
+      function setShape(shape){ brushShape = shape; brushCircleBtn.classList.toggle('active', shape==='circle'); brushSquareBtn.classList.toggle('active', shape==='square'); brushTriangleBtn.classList.toggle('active', shape==='triangle'); }
+      brushCircleBtn.addEventListener('click', ()=> setShape('circle'));
+      brushSquareBtn.addEventListener('click', ()=> setShape('square'));
+      brushTriangleBtn.addEventListener('click', ()=> setShape('triangle'));
+      // Onion skin UI
+      onionEnableEl.addEventListener('change', ()=>{ onionEnabled = !!onionEnableEl.checked; updateOnionSkins(); });
+      onionPrevEl.addEventListener('change', ()=>{ onionPrev = Math.max(0, Math.min(2, Number(onionPrevEl.value)||0)); updateOnionSkins(); });
+      onionNextEl.addEventListener('change', ()=>{ onionNext = Math.max(0, Math.min(2, Number(onionNextEl.value)||0)); updateOnionSkins(); });
     </script>
   </body>
 </html>`);
 		} else if (parsed.pathname === "/anim/state") {
-			if (!globalThis.__anim_state) globalThis.__anim_state = { w: 0, h: 0, frames: [] };
+			if (!globalThis.__anim_store) globalThis.__anim_store = { active: 'default', items: {} };
+			const store = globalThis.__anim_store;
+			const q = parsed.query || {};
+			const name = String(q.name || '').trim() || store.active || 'default';
 			if (req.method === 'GET') {
 				const bm = globalThis.__frameBitmap;
-				const w = globalThis.__anim_state.w || (bm && bm.w) || 84;
-				const h = globalThis.__anim_state.h || (bm && bm.h) || 28;
+				const cur = store.items[name] || store.items[store.active] || { w: (bm && bm.w) || 84, h: (bm && bm.h) || 28, frames: [], text: { enable:false, url:'', field:'', intervalMs:30000 } };
 				res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-				res.end(JSON.stringify({ w, h, frames: (globalThis.__anim_state.frames||[]) }));
+				res.end(JSON.stringify({ name, w: Number(cur.w)||0, h: Number(cur.h)||0, frames: Array.isArray(cur.frames)?cur.frames:[], text: cur.text || { enable:false, url:'', field:'', intervalMs:30000 } }));
 			} else if (req.method === 'POST') {
 				let body = '';
 				req.on('data', c => body += c);
@@ -485,9 +732,10 @@ function createHandler() {
 						const w = Math.max(1, Number(data.w)||0);
 						const h = Math.max(1, Number(data.h)||0);
 						const frames = Array.isArray(data.frames) ? data.frames.map(f=>({ bits: String(f.bits||''), durationMs: Math.max(10, Number(f.durationMs)||300) })) : [];
-						globalThis.__anim_state = { w, h, frames };
+						const text = data && data.text ? { enable: !!data.text.enable, url: String(data.text.url||'').trim(), field: String(data.text.field||'').trim(), intervalMs: Math.max(1000, Number(data.text.intervalMs)||30000) } : { enable:false, url:'', field:'', intervalMs:30000 };
+						store.items[name] = { w, h, frames, text };
 						res.writeHead(200, { "Content-Type": "application/json" });
-						res.end(JSON.stringify({ ok:true }));
+						res.end(JSON.stringify({ ok:true, name }));
 					} catch {
 						res.writeHead(400, { "Content-Type": "application/json" });
 						res.end(JSON.stringify({ ok:false }));
@@ -496,6 +744,85 @@ function createHandler() {
 			} else {
 				res.writeHead(405); res.end('Method Not Allowed');
 			}
+		} else if (parsed.pathname === "/anim/list") {
+			if (!globalThis.__anim_store) globalThis.__anim_store = { active: 'default', items: {} };
+			const store = globalThis.__anim_store;
+			if (!Object.keys(store.items).length) store.items['default'] = { w: 84, h: 28, frames: [] };
+			res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+			res.end(JSON.stringify({ items: Object.keys(store.items), active: store.active }));
+		} else if (parsed.pathname === "/anim/text" && req.method === 'GET') {
+			// Per-animation text fetch (cache per name)
+			if (!globalThis.__anim_store) globalThis.__anim_store = { active: 'default', items: {} };
+			const store = globalThis.__anim_store;
+			const q = parsed.query || {};
+			const name = String(q.name||'').trim() || store.active || 'default';
+			const item = store.items[name];
+			if (!item || !item.text || !item.text.enable || !item.text.url) {
+				res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+				res.end(JSON.stringify({ text: '' }));
+				return;
+			}
+			if (!item.textCache) item.textCache = { lastText:'', nextAt:0, loading:false };
+			const cache = item.textCache;
+			function send(){ res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" }); res.end(JSON.stringify({ text: String(cache.lastText||'') })); }
+			const now = Date.now();
+			if (now < (cache.nextAt||0) || cache.loading) { send(); return; }
+			cache.loading = true; cache.nextAt = now + (Number(item.text.intervalMs)||30000);
+			try{
+				const h = item.text.url.startsWith('https:') ? https : http;
+				new Promise(resolve => {
+					const controller = new AbortController();
+					const t = setTimeout(()=>{ try{ controller.abort(); }catch{} resolve(); }, 4000);
+					const req2 = h.request(item.text.url, { method:'GET', signal: controller.signal }, res2 => {
+						let data = '';
+						res2.setEncoding('utf8');
+						res2.on('data', c => { data += c; if (data.length > 8000) { try{ req2.destroy(); }catch{} } });
+						res2.on('end', () => {
+							clearTimeout(t);
+							let text = '';
+							try{
+								const ct = String(res2.headers['content-type']||'').toLowerCase();
+								if (ct.includes('application/json') || data.trim().startsWith('{') || data.trim().startsWith('[')){
+									const j = JSON.parse(data);
+									if (item.text.field){
+										const parts = String(item.text.field).split('.');
+										let v = j; for (const p of parts){ if (v && typeof v==='object') v = v[p]; else { v=''; break; } }
+										text = String(v ?? '');
+									} else {
+										text = String(j && (j.text || j.message || j.title || ''));
+									}
+								} else {
+									text = String(data||'');
+								}
+							}catch{ text = String(data||''); }
+							cache.lastText = text.replace(/[\r\n\t]+/g, ' ').slice(0, 500);
+							resolve();
+						});
+					});
+					req2.on('error', () => resolve());
+					req2.end();
+				});
+			}catch{}
+			finally{ cache.loading = false; }
+			send();
+		} else if (parsed.pathname === "/anim/select" && req.method === 'POST') {
+			if (!globalThis.__anim_store) globalThis.__anim_store = { active: 'default', items: {} };
+			const store = globalThis.__anim_store;
+			let body = '';
+			req.on('data', c => body += c);
+			req.on('end', () => {
+				try{ const { name } = JSON.parse(body||'{}'); const n = String(name||'').trim(); if (!n) throw new Error('bad'); if (!store.items[n]) store.items[n] = { w:84, h:28, frames: [] }; store.active = n; res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok:true, active: n })); }
+				catch { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok:false })); }
+			});
+		} else if (parsed.pathname === "/anim/delete" && req.method === 'POST') {
+			if (!globalThis.__anim_store) globalThis.__anim_store = { active: 'default', items: {} };
+			const store = globalThis.__anim_store;
+			let body = '';
+			req.on('data', c => body += c);
+			req.on('end', () => {
+				try{ const { name } = JSON.parse(body||'{}'); const n = String(name||'').trim(); if (!n || !store.items[n]) throw new Error('bad'); delete store.items[n]; const keys = Object.keys(store.items); if (!keys.length) store.items['default'] = { w:84, h:28, frames: [] }; if (store.active === n) store.active = keys[0] || 'default'; res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok:true, active: store.active })); }
+				catch { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok:false })); }
+			});
 		} else if (parsed.pathname === "/ski") {
 			// return simple input state for runner
 			if (!globalThis.__ski_state) {
