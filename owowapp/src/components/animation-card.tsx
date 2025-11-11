@@ -12,15 +12,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface AnimationCardProps {
+  id: string;
   title: string;
   status: string;
   animationType?: string;
+  isFavorite?: boolean;
+  onDelete: (id: string) => void;
+  onFavorite: (id: string) => void;
 }
 
 export function AnimationCard({
+  id,
   title,
-  status,
+
   animationType,
+  onDelete,
+  onFavorite,
 }: AnimationCardProps) {
   const [isEquipped, setIsEquipped] = useState(false);
 
@@ -28,14 +35,15 @@ export function AnimationCard({
     setIsEquipped(!isEquipped);
   };
 
-  const handleOption1 = () => {
-    // TODO: Add your first option logic here
-    console.log("Option 1 clicked for:", title);
+  const handleAddToFavorites = () => {
+    if (onFavorite) {
+      onFavorite(id);
+    }
+    console.log("Added to favorites:", title);
   };
 
-  const handleOption2 = () => {
-    // TODO: Add your second option logic here
-    console.log("Option 2 clicked for:", title);
+  const handleDelete = () => {
+    onDelete(id);
   };
 
   return (
@@ -63,7 +71,7 @@ export function AnimationCard({
               <DropdownMenuItem
                 onClick={(event) => {
                   event.stopPropagation();
-                  handleOption1();
+                  handleAddToFavorites();
                 }}
                 className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               >
@@ -72,7 +80,7 @@ export function AnimationCard({
               <DropdownMenuItem
                 onClick={(event) => {
                   event.stopPropagation();
-                  handleOption2();
+                  handleDelete();
                 }}
                 className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground "
               >

@@ -1,16 +1,25 @@
 "use client";
 
+import { useMemo } from "react";
 import { AnimationCard } from "@/components/animation-card";
 import { animations } from "@/lib/animations";
 
 interface AnimationGridProps {
   searchQuery: string;
   isSidebarCollapsed: boolean;
+  favorites: Set<string>;
+  onAddFavorite: (id: string) => void;
+  deletedIds: Set<string>;
+  onDelete: (id: string) => void;
 }
 
 export function AnimationGrid({
   searchQuery,
   isSidebarCollapsed,
+  favorites,
+  onAddFavorite,
+  deletedIds,
+  onDelete,
 }: AnimationGridProps) {
   type Animation = {
     id: string;
@@ -23,8 +32,17 @@ export function AnimationGrid({
     // add other properties if needed
   };
 
-  const filteredAnimations = Object.values(animations)
-    .map((AnimationObject: AnimationObject) => AnimationObject.metadata)
+  // Initialize with all animations
+  const allAnimations = useMemo(
+    () =>
+      Object.values(animations)
+        .map((AnimationObject: AnimationObject) => AnimationObject.metadata)
+        .filter((animation: Animation) => animation && animation.id),
+    []
+  );
+
+  const filteredAnimations = allAnimations
+    .filter((animation: Animation) => !deletedIds.has(animation.id))
     .filter((animation: Animation) =>
       animation.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -41,9 +59,13 @@ export function AnimationGrid({
         {filteredAnimations.map((animation) => (
           <AnimationCard
             key={animation.id}
+            id={animation.id}
             title={animation.name}
             status={animation.status}
-            animationType={animation.id} // Pass animation type for preview
+            animationType={animation.id}
+            isFavorite={favorites.has(animation.id)}
+            onDelete={onDelete}
+            onFavorite={onAddFavorite}
           />
         ))}
       </div>
