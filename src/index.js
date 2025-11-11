@@ -52,36 +52,67 @@ app.post("/upload", upload.single("image"), async (req, res) => {
     const buffer = fs.readFileSync(filePath);
     const isGif = req.file.mimetype === "image/gif";
 
-    if (isGif) {
-      console.log("Processing animated GIF...");
-      const gif = parseGIF(buffer);
-      const frames = decompressFrames(gif, true);
+     if (isGif) {
+        console.log("Processing animated GIF...");
+        const gif = parseGIF(buffer);
+        const frames = decompressFrames(gif, true);
 
+        // Create a master canvas with the GIF logical screen size so we can
+        // compose frames according to their dims and disposal methods.
+        const gifWidth = gif.lsd.width;
+        const gifHeight = gif.lsd.height;
+        const masterCanvas = createCanvas(gifWidth, gifHeight);
+        const masterCtx = masterCanvas.getContext("2d");
 
-      for (let i = 0; i < frames.length; i++) {
-        const frame = frames[i];
+        let savedImageData = null; // for disposalType === 3 (restore to previous)
 
-        // Draw raw GIF frame to canvas
-        const frameCanvas = createCanvas(frame.dims.width, frame.dims.height);
-        const frameCtx = frameCanvas.getContext("2d");
-        const frameImageData = frameCtx.createImageData(frame.dims.width, frame.dims.height);
-        frameImageData.data.set(frame.patch);
-        frameCtx.putImageData(frameImageData, 0, 0);
+        for (let i = 0; i < frames.length; i++) {
+          const frame = frames[i];
 
-        // Process and dither frame
-        const processedCanvas = await processFrame(frameCanvas, width, height);
-        const framePath = path.join(outputDir, `frame_${i}.png`);
-        fs.writeFileSync(framePath, processedCanvas.toBuffer("image/png"));
+          // If disposalType === 3 we must be able to restore the canvas state
+          if (frame.disposalType === 3) {
+            savedImageData = masterCtx.getImageData(0, 0, gifWidth, gifHeight);
+          }
 
-        // Send to flipdot
-        if (!IS_DEV) {
-          const ctx = processedCanvas.getContext("2d");
-          const imageData = ctx.getImageData(0, 0, width, height);
-          display.setImageData(imageData);
-          if (display.isDirty()) display.flush();
-          await new Promise(r => setTimeout(r, 1000 / FPS));
+          // Draw the frame patch onto the master canvas at the frame offsets
+          const frameCanvas = createCanvas(frame.dims.width, frame.dims.height);
+          const frameCtx = frameCanvas.getContext("2d");
+          const frameImageData = frameCtx.createImageData(frame.dims.width, frame.dims.height);
+          frameImageData.data.set(frame.patch);
+          frameCtx.putImageData(frameImageData, 0, 0);
+
+          // Put the frame patch into master canvas at correct position
+          masterCtx.putImageData(frameImageData, frame.dims.left, frame.dims.top);
+
+          // Process (scale/dither) the composed master canvas to your display size
+          const processedCanvas = await processFrame(masterCanvas, width, height);
+
+          // Save frame to output for debugging
+          const framePath = path.join(outputDir, `frame_${i}.png`);
+          fs.writeFileSync(framePath, processedCanvas.toBuffer("image/png"));
+
+          // Send to flipdot
+          if (!IS_DEV) {
+            const ctx = processedCanvas.getContext("2d");
+            const imageData = ctx.getImageData(0, 0, width, height);
+            display.setImageData(imageData);
+            if (display.isDirty()) display.flush();
+          }
+
+          // Wait the GIF frame delay (frame.delay is in hundredths of a second)
+          const delayCs = frame.delay || 10; // default 100ms if missing
+          await new Promise((r) => setTimeout(r, delayCs * 10));
+
+          // Apply disposal after the frame has been shown
+          if (frame.disposalType === 2) {
+            // restore to background: clear the frame area
+            masterCtx.clearRect(frame.dims.left, frame.dims.top, frame.dims.width, frame.dims.height);
+          } else if (frame.disposalType === 3 && savedImageData) {
+            // restore to previous
+            masterCtx.putImageData(savedImageData, 0, 0);
+            savedImageData = null;
+          }
         }
-      }
     } else {
       console.log("Processing static image...");
       const img = await loadImage(filePath);
