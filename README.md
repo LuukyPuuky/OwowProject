@@ -21,6 +21,7 @@ Clone the repository and install dependencies:
 git clone <repository-url>
 cd node-flipdots
 npm install
+npm install ws
 ```
 
 ## Running the Application

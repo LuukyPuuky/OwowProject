@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { createCanvas, loadImage } from "canvas";
+import { createCanvas} from "canvas";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,10 +8,13 @@ import { parseGIF, decompressFrames } from "gifuct-js";
 import { FPS, LAYOUT } from "./settings.js";
 import { Display } from "@owowagency/flipdot-emu";
 import { Ticker } from "./ticker.js";
+import { WebSocketServer } from "ws";
+import http from "http";
 
 const IS_DEV = process.argv.includes("--dev");
 const app = express();
-
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
 
 // Setup static files and JSON parsing
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +22,11 @@ const __dirname = path.dirname(__filename);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 
+// output directory
+const outputDir = "./output";
+if (!fs.existsSync(outputDir)) {
+  fs.mkdirSync(outputDir, { recursive: true });
+}
 
 // Setup multer for file uploads
 const upload = multer({ dest: "./uploads/" });
@@ -27,6 +35,35 @@ const upload = multer({ dest: "./uploads/" });
 const uploadedGIFs = new Map(); // { fileName: { frames, width, height, delays } }
 let currentGIF = null; // Currently playing GIF
 let currentFrameIndex = 0;
+let wsClients = []; // Store connected WebSocket clients
+
+// Broadcast frame to all connected clients
+function broadcastFrame(imageData) {
+  const data = imageData.data;
+  const buffer = Buffer.from(data);
+  wsClients.forEach(client => {
+    if (client.readyState === WebSocketServer.OPEN) {
+      client.send(JSON.stringify({
+        type: 'frame',
+        data: buffer.toString('base64'),
+        width: imageData.width,
+        height: imageData.height
+      }));
+    }
+  });
+}
+
+// WebSocket connection handler
+wss.on('connection', (ws) => {
+  console.log('Client connected');
+  wsClients.push(ws);
+  
+  ws.on('close', () => {
+    console.log('Client disconnected');
+    wsClients = wsClients.filter(c => c !== ws);
+  });
+});
+
 
 // Create display (your existing code)
 const display = new Display({
@@ -184,6 +221,10 @@ ticker.start(({ deltaTime, elapsedTime }) => {
     data[i + 3] = 255;
   }
   ctx.putImageData(imageData, 0, 0);
+   
+  // Broadcast frame to web clients
+  broadcastFrame(imageData);
+
 
   // Send to display
   if (!IS_DEV) {
@@ -197,6 +238,8 @@ ticker.start(({ deltaTime, elapsedTime }) => {
   // Advance frame
   currentFrameIndex = (currentFrameIndex + 1) % gifData.frames.length;
 });
+
+
 
 // Start server
 app.listen(3000, () => {

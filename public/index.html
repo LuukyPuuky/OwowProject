@@ -1,94 +1,116 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8" />
   <title>GIF Manager</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    #gifList { margin: 20px 0; }
-    .gif-item { padding: 10px; margin: 5px 0; background: #f0f0f0; border-radius: 5px; }
-    .gif-item button { margin: 0 5px; }
-    .gif-item.active { background: #90EE90; }
+    body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .gif-item { padding: 10px; margin: 8px 0; background: #f4f4f4; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+    .gif-item.active { background: #d4ffd4; }
+    button { padding: 6px 12px; margin-left: 6px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+    button:hover { background: #0056b3; }
+    #displayCanvas { border: 2px solid #333; background: black; width: 100%; max-width: 600px; margin: 20px 0; image-rendering: pixelated; }
+    input[type="file"] { margin-right: 10px; }
   </style>
 </head>
 <body>
-  <h1>GIF Manager</h1>
+  <div class="container">
+    <h1>GIF Manager for Flipdot Billboard</h1>
 
-  <div>
-    <h2>Upload GIFs</h2>
-    <input type="file" id="fileInput" multiple accept=".gif" />
-    <button onclick="uploadGIFs()">Upload</button>
-    <p id="uploadStatus"></p>
-  </div>
+    <section>
+      <h2>Upload GIFs</h2>
+      <input id="fileInput" type="file" accept=".gif" multiple />
+      <button onclick="uploadGIFs()">Upload</button>
+      <p id="uploadStatus"></p>
+    </section>
 
-  <div>
-    <h2>Available GIFs</h2>
-    <div id="gifList"></div>
+    <section>
+      <h2>Preview (Live Display)</h2>
+      <canvas id="displayCanvas" width="112" height="16"></canvas>
+    </section>
+
+    <section>
+      <h2>Available GIFs</h2>
+      <div id="gifList"></div>
+    </section>
   </div>
 
   <script>
-    async function uploadGIFs() {
-      const files = document.getElementById("fileInput").files;
-      if (files.length === 0) {
-        alert("Select GIFs first");
-        return;
-      }
+    const canvas = document.getElementById('displayCanvas');
+    const ctx = canvas.getContext('2d');
+    let ws = null;
 
-      const formData = new FormData();
-      for (let file of files) {
-        formData.append("images", file);
-      }
+    function connectWebSocket(){
+      ws = new WebSocket('ws://' + window.location.host);
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if(msg.type === 'frame'){
+          // Decode base64 to Uint8Array
+          const binary = atob(msg.data);
+          const bytes = new Uint8Array(binary.length);
+          for(let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          
+          // Create ImageData and draw
+          const imageData = ctx.createImageData(msg.width, msg.height);
+          imageData.data.set(bytes);
+          ctx.putImageData(imageData, 0, 0);
+        }
+      };
+      ws.onerror = () => console.error('WebSocket error');
+    }
 
-      try {
-        const res = await fetch("/upload", {
-          method: "POST",
-          body: formData,
-        });
-        const data = await res.json();
-        document.getElementById("uploadStatus").textContent = `Uploaded: ${data.uploaded.map((f) => f.name).join(", ")}`;
-        refreshGIFList();
-      } catch (err) {
-        alert("Upload failed: " + err.message);
+    async function uploadGIFs(){
+      const files = document.getElementById('fileInput').files;
+      if(!files.length){ alert('Select GIF files'); return; }
+      const fd = new FormData();
+      for(const f of files) fd.append('images', f);
+      const res = await fetch('/upload', { method:'POST', body: fd });
+      const j = await res.json();
+      document.getElementById('uploadStatus').textContent = 'Uploaded: ' + j.uploaded.map(x=>x.name).join(', ');
+      document.getElementById('fileInput').value = '';
+      refreshList();
+    }
+
+    async function refreshList(){
+      const res = await fetch('/gifs');
+      const j = await res.json();
+      const el = document.getElementById('gifList');
+      el.innerHTML = '';
+      for(const name of j.gifs){
+        const div = document.createElement('div');
+        div.className='gif-item'+(name===j.current?' active':'');
+        div.innerHTML = `<span><strong>${name}</strong></span>
+          <div>
+            <button onclick="selectGif('${name}')">Select</button>
+            <button onclick="playGif('${name}')">Play</button>
+            <button onclick="deleteGif('${name}')">Delete</button>
+          </div>`;
+        el.appendChild(div);
       }
     }
 
-    async function selectGIF(name) {
-      const res = await fetch("/select-gif", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      refreshGIFList();
+    async function selectGif(name){
+      await fetch('/select-gif',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+      refreshList();
     }
 
-    async function deleteGIF(name) {
-      if (!confirm(`Delete ${name}?`)) return;
-      const res = await fetch("/delete-gif", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      refreshGIFList();
+    async function playGif(name){
+      await fetch('/select-gif',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+      const res = await fetch('/play',{method:'POST',headers:{'Content-Type':'application/json'}});
+      refreshList();
     }
 
-    async function refreshGIFList() {
-      const res = await fetch("/gifs");
-      const data = await res.json();
-
-      let html = "";
-      for (const gif of data.gifs) {
-        const isActive = gif === data.current ? "active" : "";
-        html += `
-          <div class="gif-item ${isActive}">
-            <strong>${gif}</strong>
-            <button onclick="selectGIF('${gif}')">Play</button>
-            <button onclick="deleteGIF('${gif}')">Delete</button>
-          </div>
-        `;
-      }
-      document.getElementById("gifList").innerHTML = html;
+    async function deleteGif(name){
+      if(!confirm('Delete '+name+'?')) return;
+      await fetch('/delete-gif',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})});
+      refreshList();
     }
 
-    refreshGIFList();
+    // Connect WebSocket on page load
+    connectWebSocket();
+    refreshList();
   </script>
 </body>
 </html>
