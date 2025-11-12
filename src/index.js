@@ -152,7 +152,7 @@ app.post("/delete-gif", express.json(), (req, res) => {
 });
 
 // **Main loop - play current GIF frame**
-const ticker = new Ticker({ fps: 30 });
+const ticker = new Ticker({ fps: 15 });
 
 ticker.start(({ deltaTime, elapsedTime }) => {
   if (!currentGIF || !uploadedGIFs.has(currentGIF)) {
