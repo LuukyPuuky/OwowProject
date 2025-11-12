@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { createCanvas} from "canvas";
+import { createCanvas, loadImage} from "canvas";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -94,36 +94,51 @@ app.post("/upload", upload.array("images", 10), async (req, res) => {
 
     const uploadedFiles = [];
 
-    for (const file of req.files) {
-      try {
+for (const file of req.files) {
+  try {
     const buffer = fs.readFileSync(file.path);
-    // gifuct-js expects an ArrayBuffer
-    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-    const gif = parseGIF(arrayBuffer);
-    const frames = decompressFrames(gif, true);
-        
-   const fileName = file.originalname || `gif_${Date.now()}.gif`;
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const isGif = file.mimetype === "image/gif" || ext === ".gif";
 
-    uploadedGIFs.set(fileName, {
-      frames,
-      width: gif.lsd.width,
-      height: gif.lsd.height,
-      delays: frames.map((f) => (f.delay || 10) * 10), // Convert to ms
-    });
+    if (isGif) {
+      // existing GIF handling (gifuct-js)
+      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      const gif = parseGIF(arrayBuffer);
+      const frames = decompressFrames(gif, true);
 
-        uploadedFiles.push({
-          name: fileName,
-          frameCount: frames.length,
-        });
+      uploadedGIFs.set(fileName, {
+        type: "gif",
+        frames,
+        width: gif.lsd.width,
+        height: gif.lsd.height,
+        delays: frames.map((f) => (f.delay || 10) * 10),
+      });
+    } else {
+      // Static image: create a single RGBA frame compatible with your playback path
+      const img = await loadImage(buffer); // loadImage returns Image
+      const imgW = img.width;
+      const imgH = img.height;
+      const imgCanvas = createCanvas(imgW, imgH);
+      const imgCtx = imgCanvas.getContext("2d");
+      imgCtx.drawImage(img, 0, 0, imgW, imgH);
+      const imgData = imgCtx.getImageData(0, 0, imgW, imgH);
 
-        // Set as current if it's the first upload
-        if (!currentGIF) {
-          currentGIF = fileName;
-          currentFrameIndex = 0;
-        }
+      // Create a single-frame array where frame.patch matches the GIF frame.patch format
+      const singleFrame = {
+        patch: new Uint8ClampedArray(imgData.data), // RGBA bytes
+        dims: { width: imgW, height: imgH, left: 0, top: 0 },
+      };
 
-        // Clean up temp file
-    fs.unlinkSync(file.path);
+      uploadedGIFs.set(fileName, {
+        type: "image",
+        frames: [singleFrame],
+        width: imgW,
+        height: imgH,
+        delays: [100], // ms (unused by current ticker but set)
+      });
+    }
+
+    // ...existing code for uploadedFiles, currentGIF init, cleanup...
   } catch (err) {
     console.error(`Error processing ${file.originalname}:`, err.message);
   }
