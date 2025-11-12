@@ -59,6 +59,7 @@ app.post("/upload", upload.array("images", 10), async (req, res) => {
 
     for (const file of req.files) {
       try {
+    const buffer = fs.readFileSync(file.path);
     // gifuct-js expects an ArrayBuffer
     const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
     const gif = parseGIF(arrayBuffer);
