@@ -12,25 +12,38 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface AnimationCardProps {
+  id: string;
   title: string;
   status: string;
+  animationType?: string;
+  isFavorite?: boolean;
+  onDelete: (id: string) => void;
+  onFavorite: (id: string) => void;
 }
 
-export function AnimationCard({ title, status }: AnimationCardProps) {
+export function AnimationCard({
+  id,
+  title,
+
+  animationType,
+  onDelete,
+  onFavorite,
+}: AnimationCardProps) {
   const [isEquipped, setIsEquipped] = useState(false);
 
   const handleCardClick = () => {
     setIsEquipped(!isEquipped);
   };
 
-  const handleOption1 = () => {
-    // TODO: Add your first option logic here
-    console.log("Option 1 clicked for:", title);
+  const handleAddToFavorites = () => {
+    if (onFavorite) {
+      onFavorite(id);
+    }
+    console.log("Added to favorites:", title);
   };
 
-  const handleOption2 = () => {
-    // TODO: Add your second option logic here
-    console.log("Option 2 clicked for:", title);
+  const handleDelete = () => {
+    onDelete(id);
   };
 
   return (
@@ -46,34 +59,39 @@ export function AnimationCard({ title, status }: AnimationCardProps) {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer pointer-events-auto"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              align="end"
+              className="shadow-lg bg-card border-2 border-border "
+            >
               <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleOption1();
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleAddToFavorites();
                 }}
+                className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               >
-                Option 1
+                Add to Favorites
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleOption2();
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleDelete();
                 }}
+                className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground "
               >
-                Option 2
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
         <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
-          <PixelDisplay size="small" />
+          <PixelDisplay size="small" animationType={animationType} />
         </div>
 
         <div className="space-y-2">

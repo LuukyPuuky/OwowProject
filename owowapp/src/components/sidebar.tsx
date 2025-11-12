@@ -7,15 +7,19 @@ import {
   ChevronDown,
   Star,
   MoreVertical,
+  X,
 } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { PixelDisplay } from "@/components/pixel-display";
+import { animations } from "@/lib/animations";
 
 interface SidebarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   isCollapsed: boolean;
   onToggleSidebar: () => void;
+  favorites?: Set<string>;
+  onRemoveFavorite: (id: string) => void;
 }
 
 export function Sidebar({
@@ -23,9 +27,26 @@ export function Sidebar({
   onSearchChange,
   isCollapsed,
   onToggleSidebar,
+  favorites,
+  onRemoveFavorite,
 }: SidebarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isFavouritesOpen, setIsFavouritesOpen] = useState(false);
+
+  // Get favorite animation objects
+  const favoriteAnimations =
+    favorites && favorites.size > 0
+      ? Array.from(favorites)
+          .map((id) => {
+            const animObj = Object.values(animations).find(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (a: any) => a.metadata?.id === id
+            );
+            return animObj?.metadata;
+          })
+          .filter((anim) => anim !== undefined)
+      : [];
+
   return (
     <aside
       className={`${
@@ -132,7 +153,7 @@ export function Sidebar({
             >
               <div className="flex items-center gap-2">
                 <Star className="h-4 w-4 text-muted-foreground" />
-                <span>Favourites</span>
+                <span>Favourites ({favorites?.size || 0})</span>
               </div>
               {isFavouritesOpen ? (
                 <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -144,32 +165,31 @@ export function Sidebar({
             {/* Favourites Content */}
             {isFavouritesOpen && (
               <div className="mt-4 space-y-4">
-                <div className="text-sm text-muted-foreground px-2 space-y-3">
-                  <div className="flex items-center justify-between border-2 p-4 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <div className="bg-black pt-3 pb-3 pl-5 pr-5" />
-                      {/* <div className="inline-block h-[4px] min-h-[1em] w-0.5 self-stretch bg-border" /> */}
-                      <p>Star animation</p>
-                    </div>
-                    <MoreVertical className="h-4 w-4" />
+                {favoriteAnimations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground px-2 py-4 text-center">
+                    No favorites yet
+                  </p>
+                ) : (
+                  <div className="text-sm text-muted-foreground px-2 space-y-3">
+                    {favoriteAnimations.map((anim) => (
+                      <div
+                        key={anim.id}
+                        className="flex items-center justify-between border-2 p-4 rounded-xl hover:bg-accent/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="bg-black pt-3 pb-3 pl-5 pr-5" />
+                          <p>{anim.name}</p>
+                        </div>
+                        <button
+                          onClick={() => onRemoveFavorite(anim.id)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between border-2 p-4 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <div className="bg-black pt-3 pb-3 pl-5 pr-5" />
-                      {/* <div className="inline-block h-[4px] min-h-[1em] w-0.5 self-stretch bg-border" /> */}
-                      <p>Rainbow Wave Effect</p>
-                    </div>
-                    <MoreVertical className="h-4 w-4" />
-                  </div>
-                  <div className="flex items-center justify-between border-2 p-4 rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <div className="bg-black pt-3 pb-3 pl-5 pr-5" />
-                      {/* <div className="inline-block h-[4px] min-h-[1em] w-0.5 self-stretch bg-border" /> */}
-                      <p>Text Scroll Display</p>
-                    </div>
-                    <MoreVertical className="h-4 w-4" />
-                  </div>
-                </div>
+                )}
               </div>
             )}
           </div>
