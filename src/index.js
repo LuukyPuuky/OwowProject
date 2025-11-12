@@ -16,7 +16,7 @@ const IS_DEV = process.argv.includes("--dev");
 // Create display
 const display = new Display({
 	layout: LAYOUT,
-	panelWidth: 28,
+	panelWidth: 30,
 	isMirrored: true,
 	transport: !IS_DEV ? {
 		type: 'serial',

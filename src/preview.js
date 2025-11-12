@@ -102,9 +102,6 @@ function createHandler() {
           <span id="sceneStatus" style="color:#333;display:inline-block;min-width:120px;height:20px;line-height:20px"></span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
-          <a href="/anim" target="_blank" rel="noopener noreferrer" style="background:#0b5;color:#fff;padding:6px 10px;border-radius:6px;text-decoration:none;border:1px solid #0a4">Open Animation Maker</a>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
           <button id="voteHappy">Happy :-)</button>
           <button id="voteSad">Sad :-(</button>
           <button id="reset">Reset</button>
@@ -423,6 +420,7 @@ function createHandler() {
       <button id="stop">Stop</button>
       <button id="save">Save</button>
       <span class="badge" id="sizeBadge"></span>
+      <span id="autoSaveStatus" style="display:inline-block;padding:4px 8px;border-radius:4px;font-size:12px;min-width:120px;text-align:center;margin-left:8px"></span>
       <a href="/view?scene=anim" target="_blank" style="margin-left:auto">Open viewer ▶</a>
       <span class="range" style="margin-left:8px">
         <label for="brushSize">Brush</label>
@@ -444,12 +442,21 @@ function createHandler() {
         <label>Next <input id="onionNext" type="number" min="0" max="2" value="0" style="width:60px; padding:4px 6px" /></label>
       </div>
       <div style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; padding:6px 8px; background:#eef; border-radius:8px; border:1px solid #cde">
-        <strong style="font-size:12px">Text feed (overlay)</strong>
-        <input id="textUrl" placeholder="https://... (text or JSON)" style="padding:4px 6px; width:260px" />
-        <label>Field <input id="textField" placeholder="message" style="padding:4px 6px; width:120px" /></label>
-        <label>Interval <input id="textInt" type="number" min="1000" step="500" value="30000" style="width:110px; padding:4px 6px" /></label>
-        <label>Enable <input id="textEnable" type="checkbox" /></label>
-        <button id="textSave">Save text</button>
+        <strong style="font-size:12px">Display Settings</strong>
+        <label>Mode 
+          <select id="vuMode" style="padding:4px 6px">
+            <option value="standard">Standard</option>
+            <option value="vumeter">VU Meter</option>
+          </select>
+        </label>
+        <label>Cols <input id="vuCols" type="number" min="1" max="200" value="84" style="width:70px; padding:4px 6px" /></label>
+        <label>Rows <input id="vuRows" type="number" min="1" max="100" value="30" style="width:70px; padding:4px 6px" /></label>
+        <label>Dot size <input id="vuDotSize" type="number" min="1" max="30" value="15" style="width:70px; padding:4px 6px" /></label>
+        <label>Gap <input id="vuGap" type="number" min="0" max="10" value="1" style="width:70px; padding:4px 6px" /></label>
+        <label>Sensitivity <input id="vuSensitivity" type="range" min="0" max="100" value="50" style="width:120px" /></label>
+        <label>Smoothing <input id="vuSmoothing" type="range" min="0" max="100" value="50" style="width:120px" /></label>
+        <label>Peak decay <input id="vuPeakDecay" type="range" min="0" max="100" value="50" style="width:120px" /></label>
+        <button id="vuApply">Apply Settings</button>
       </div>
     </div>
     <div class="wrap">
@@ -479,11 +486,6 @@ function createHandler() {
       const onionEnableEl = document.getElementById('onionEnable');
       const onionPrevEl = document.getElementById('onionPrev');
       const onionNextEl = document.getElementById('onionNext');
-      const textUrlEl = document.getElementById('textUrl');
-      const textFieldEl = document.getElementById('textField');
-      const textIntEl = document.getElementById('textInt');
-      const textEnableEl = document.getElementById('textEnable');
-      const textSaveBtn = document.getElementById('textSave');
       const animSel = document.getElementById('animSel');
       const animNameInput = document.getElementById('animName');
       let frames = [];
@@ -494,12 +496,59 @@ function createHandler() {
       let brushMode = 'paint'; // 'paint' | 'erase'
       let brushShape = 'circle'; // 'circle' | 'square' | 'triangle'
       let currentName = '';
-      let textMeta = { enable:false, url:'', field:'', intervalMs:30000 };
       let onionEnabled = false;
       let onionPrev = 1;
       let onionNext = 0;
       function bitsOf(arr){ return arr.map(v=>v?'1':'0').join(''); }
       function arrOf(bits){ const arr = new Array(W*H).fill(false); for(let i=0;i<arr.length && i<bits.length;i++){ arr[i] = bits.charAt(i)==='1'; } return arr; }
+      
+      // Auto-save functionality with debouncing and status display
+      let autoSaveTimer = null;
+      let statusTimer = null;
+      const statusEl = () => document.getElementById('autoSaveStatus');
+      
+      function showStatus(message, type = 'info') {
+        const el = statusEl();
+        if (!el) return;
+        el.textContent = message;
+        if (type === 'saving') {
+          el.style.background = '#fff3cd';
+          el.style.color = '#856404';
+          el.style.border = '1px solid #ffeaa7';
+        } else if (type === 'success') {
+          el.style.background = '#d4edda';
+          el.style.color = '#155724';
+          el.style.border = '1px solid #c3e6cb';
+        } else if (type === 'pending') {
+          el.style.background = '#e7f3ff';
+          el.style.color = '#004085';
+          el.style.border = '1px solid #b8daff';
+        }
+        if (statusTimer) clearTimeout(statusTimer);
+        if (type === 'success') {
+          statusTimer = setTimeout(() => { el.textContent = ''; el.style.background = ''; el.style.color = ''; el.style.border = ''; }, 2000);
+        }
+      }
+      
+      async function autoSave(action = '') {
+        const name = String(animSel && animSel.value || '').trim() || currentName;
+        if (!name) return;
+        showStatus('Saving...', 'saving');
+        const payload = { w: W, h: H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })) };
+        const q = name ? ('?name=' + encodeURIComponent(name)) : '';
+        try {
+          await fetch('/anim/state' + q, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+          showStatus('✓ Auto-saved' + (action ? ': ' + action : ''), 'success');
+        } catch {
+          showStatus('Save failed', 'error');
+        }
+      }
+      
+      function triggerAutoSave(action = '') {
+        showStatus('Changes pending...', 'pending');
+        if (autoSaveTimer) clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(() => autoSave(action), 500); // Auto-save after 500ms of inactivity
+      }
       function applyBrushAt(index){
         const arr = frames[idx]?.arr || new Array(W*H).fill(false);
         const cx = index % W;
@@ -529,6 +578,7 @@ function createHandler() {
             if (el) el.classList.toggle('on', arr[pi]);
           }
         }
+        triggerAutoSave('Drawing'); // Auto-save after painting
       }
       function renderGrid(){
         grid.style.gridTemplateColumns = 'repeat(' + W + ',12px)';
@@ -585,15 +635,23 @@ function createHandler() {
           tl.appendChild(t);
         });
       }
-      async function loadState(name){ try{ const r = await fetch('/anim/state' + (name?('?name='+encodeURIComponent(name)):'') ); const j = await r.json(); if (j && Array.isArray(j.frames)) { if (j.w && j.h){ W=j.w; H=j.h; } frames = j.frames.map(fr=>({ dur: Number(fr.durationMs)||300, arr: arrOf(String(fr.bits||'')) })); if (!frames.length) frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx = Math.min(idx, frames.length-1); durEl.value=String(frames[idx].dur); currentName = String(j.name||'') || currentName; textMeta = { enable: !!(j.text && j.text.enable), url: String((j.text && j.text.url) || ''), field: String((j.text && j.text.field) || ''), intervalMs: Math.max(1000, Number(j.text && j.text.intervalMs) || 30000) }; textUrlEl.value = textMeta.url; textFieldEl.value = textMeta.field; textIntEl.value = String(textMeta.intervalMs); textEnableEl.checked = !!textMeta.enable; } }catch{ frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx=0; }
+      async function loadState(name){ try{ const r = await fetch('/anim/state' + (name?('?name='+encodeURIComponent(name)):'') ); const j = await r.json(); if (j && Array.isArray(j.frames)) { if (j.w && j.h){ W=j.w; H=j.h; } frames = j.frames.map(fr=>({ dur: Number(fr.durationMs)||300, arr: arrOf(String(fr.bits||'')) })); if (!frames.length) frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx = Math.min(idx, frames.length-1); durEl.value=String(frames[idx].dur); currentName = String(j.name||'') || currentName; } }catch{ frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx=0; }
         renderGrid(); renderTimeline(); }
-      async function saveState(name){ const payload = { w: W, h: H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })), text: { enable: !!textEnableEl.checked, url: String(textUrlEl.value||'').trim(), field: String(textFieldEl.value||'').trim(), intervalMs: Math.max(1000, Number(textIntEl.value)||30000) } }; const q = name?('?name='+encodeURIComponent(name)) : ''; try{ await fetch('/anim/state'+q, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); }catch{} }
-      document.getElementById('addFrame').onclick = ()=>{ frames.splice(idx+1, 0, { dur: Number(durEl.value)||300, arr: new Array(W*H).fill(false) }); idx++; renderTimeline(); renderGrid(); };
-      document.getElementById('dupFrame').onclick = ()=>{ const cur = frames[idx]; frames.splice(idx+1, 0, { dur: cur.dur, arr: cur.arr.slice() }); idx++; renderTimeline(); renderGrid(); };
-      document.getElementById('delFrame').onclick = ()=>{ if (!frames.length) return; frames.splice(idx,1); if (!frames.length) frames.push({ dur:300, arr:new Array(W*H).fill(false) }); idx = Math.min(idx, frames.length-1); renderTimeline(); renderGrid(); };
-      durEl.onchange = ()=>{ const v = Math.max(10, Number(durEl.value)||300); frames[idx].dur = v; renderTimeline(); };
+      async function saveState(name){ const payload = { w: W, h: H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })) }; const q = name?('?name='+encodeURIComponent(name)) : ''; try{ await fetch('/anim/state'+q, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); showStatus('✓ Manually saved', 'success'); }catch{} }
+      document.getElementById('addFrame').onclick = ()=>{ frames.splice(idx+1, 0, { dur: Number(durEl.value)||300, arr: new Array(W*H).fill(false) }); idx++; renderTimeline(); renderGrid(); triggerAutoSave('Add Frame'); };
+      document.getElementById('dupFrame').onclick = ()=>{ const cur = frames[idx]; frames.splice(idx+1, 0, { dur: cur.dur, arr: cur.arr.slice() }); idx++; renderTimeline(); renderGrid(); triggerAutoSave('Duplicate Frame'); };
+      document.getElementById('delFrame').onclick = ()=>{ 
+        if (!frames.length) return; 
+        if (!confirm('⚠️ Delete this frame?\\n\\nThis action will be auto-saved and cannot be undone.')) return;
+        frames.splice(idx,1); 
+        if (!frames.length) frames.push({ dur:300, arr:new Array(W*H).fill(false) }); 
+        idx = Math.min(idx, frames.length-1); 
+        renderTimeline(); 
+        renderGrid(); 
+        triggerAutoSave('Delete Frame'); 
+      };
+      durEl.onchange = ()=>{ const v = Math.max(10, Number(durEl.value)||300); frames[idx].dur = v; renderTimeline(); triggerAutoSave('Duration Change'); };
       document.getElementById('save').onclick = ()=>{ const n = String(animSel.value||'').trim(); saveState(n||currentName); };
-      textSaveBtn.onclick = ()=>{ const n = String(animSel.value||'').trim(); saveState(n||currentName); };
       let playTimer = 0;
       document.getElementById('play').onclick = ()=>{ if (playing) return; playing = true; function step(){ if (!playing) return; idx = (idx + 1) % frames.length; durEl.value = String(frames[idx].dur); renderTimeline(); renderGrid(); playTimer = setTimeout(step, frames[idx].dur); } playTimer = setTimeout(step, frames[idx].dur); };
       document.getElementById('stop').onclick = ()=>{ playing=false; try{ clearTimeout(playTimer); }catch{} };
@@ -688,14 +746,51 @@ function createHandler() {
           });
         }catch{}
       }
-      animSel.addEventListener('change', async ()=>{ const n = String(animSel.value||''); await loadState(n); animNameInput.value = n; });
+      animSel.addEventListener('change', async ()=>{ 
+        const n = String(animSel.value||''); 
+        if (autoSaveTimer) {
+          if (!confirm('⚠️ Switch animation?\\n\\nYou have unsaved changes. They will be auto-saved before switching.\\n\\nContinue?')) {
+            animSel.value = currentName; 
+            return;
+          }
+          await autoSave('Before Switch');
+        }
+        await loadState(n); 
+        animNameInput.value = n; 
+      });
       document.getElementById('animNew').onclick = async ()=>{ const name = String(animNameInput.value||'').trim() || ('anim-'+Date.now()); frames=[{ dur:300, arr:new Array(W*H).fill(false) }]; idx=0; await saveState(name); await fetch('/anim/select', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); await refreshAnimList(); await loadState(name); };
       document.getElementById('animSaveAs').onclick = async ()=>{ const name = String(animNameInput.value||'').trim(); if (!name) return; await saveState(name); await refreshAnimList(); animSel.value = name; };
-      document.getElementById('animDelete').onclick = async ()=>{ const name = String(animSel.value||''); if (!name) return; try{ await fetch('/anim/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }catch{} await refreshAnimList(); const next = String(animSel.value||''); await loadState(next); };
+      document.getElementById('animDelete').onclick = async ()=>{ 
+        const name = String(animSel.value||''); 
+        if (!name) return; 
+        if (!confirm('⚠️ Delete animation "' + name + '"?\\n\\nThis will permanently delete this animation and cannot be undone.\\n\\nAre you sure?')) return;
+        try{ await fetch('/anim/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }catch{} 
+        await refreshAnimList(); 
+        const next = String(animSel.value||''); 
+        await loadState(next); 
+      };
       document.getElementById('animSetActive').onclick = async ()=>{ const name = String(animSel.value||''); if (!name) return; try{ await fetch('/anim/select', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) }); }catch{} await refreshAnimList(); };
-      (async function init(){ await getLiveSize(); await refreshAnimList(); await loadState(); })();
-      // Save on unload to persist quick edits
-      window.addEventListener('beforeunload', ()=>{ try{ const n = String(animSel && animSel.value || ''); navigator.sendBeacon('/anim/state' + (n?('?name='+encodeURIComponent(n)):'') , new Blob([JSON.stringify({ w:W, h:H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })), text: { enable: !!textEnableEl.checked, url: String(textUrlEl.value||'').trim(), field: String(textFieldEl.value||'').trim(), intervalMs: Math.max(1000, Number(textIntEl.value)||30000) } })], { type:'application/json' })); }catch{} });
+      (async function init(){ 
+        await getLiveSize(); 
+        await refreshAnimList(); 
+        await loadState(); 
+        // Initialize display settings inputs with current values
+        document.getElementById('vuCols').value = W;
+        document.getElementById('vuRows').value = H;
+      })();
+      // Save on unload to persist quick edits + warn user
+      window.addEventListener('beforeunload', (e)=>{ 
+        try{ 
+          const n = String(animSel && animSel.value || ''); 
+          navigator.sendBeacon('/anim/state' + (n?('?name='+encodeURIComponent(n)):'') , new Blob([JSON.stringify({ w:W, h:H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })) })], { type:'application/json' })); 
+          // Show browser warning if there are pending changes
+          if (autoSaveTimer) {
+            e.preventDefault();
+            e.returnValue = 'You have unsaved changes. Your work will be auto-saved before closing. Are you sure you want to leave?';
+            return e.returnValue;
+          }
+        }catch{} 
+      });
       // Brush UI
       brushSizeEl.addEventListener('input', ()=>{ brushSize = Math.max(1, Number(brushSizeEl.value)||1); });
       modePaintBtn.addEventListener('click', ()=>{ brushMode = 'paint'; modePaintBtn.classList.add('active'); modeEraseBtn.classList.remove('active'); });
@@ -710,6 +805,64 @@ function createHandler() {
       onionEnableEl.addEventListener('change', ()=>{ onionEnabled = !!onionEnableEl.checked; updateOnionSkins(); });
       onionPrevEl.addEventListener('change', ()=>{ onionPrev = Math.max(0, Math.min(2, Number(onionPrevEl.value)||0)); updateOnionSkins(); });
       onionNextEl.addEventListener('change', ()=>{ onionNext = Math.max(0, Math.min(2, Number(onionNextEl.value)||0)); updateOnionSkins(); });
+      // VU Meter / Display Settings UI
+      document.getElementById('vuApply').addEventListener('click', ()=>{
+        const mode = document.getElementById('vuMode').value;
+        const newCols = Math.max(1, Math.min(200, Number(document.getElementById('vuCols').value)||84));
+        const newRows = Math.max(1, Math.min(100, Number(document.getElementById('vuRows').value)||30));
+        const dotSize = Math.max(1, Math.min(30, Number(document.getElementById('vuDotSize').value)||15));
+        const gap = Math.max(0, Math.min(10, Number(document.getElementById('vuGap').value)||1));
+        const sensitivity = Number(document.getElementById('vuSensitivity').value)||50;
+        const smoothing = Number(document.getElementById('vuSmoothing').value)||50;
+        const peakDecay = Number(document.getElementById('vuPeakDecay').value)||50;
+        
+        // Resize canvas if dimensions changed
+        if (newCols !== W || newRows !== H) {
+          const oldW = W, oldH = H;
+          W = newCols;
+          H = newRows;
+          
+          // Resize all existing frames with scaling
+          frames.forEach(frame => {
+            const oldArr = frame.arr;
+            const newArr = new Array(W * H).fill(false);
+            
+            // Scale/map old pixels to new size (nearest neighbor)
+            for (let y = 0; y < H; y++) {
+              for (let x = 0; x < W; x++) {
+                const srcX = Math.floor(x * oldW / W);
+                const srcY = Math.floor(y * oldH / H);
+                const srcIdx = srcY * oldW + srcX;
+                if (srcIdx >= 0 && srcIdx < oldArr.length) {
+                  newArr[y * W + x] = oldArr[srcIdx];
+                }
+              }
+            }
+            frame.arr = newArr;
+          });
+          
+          // Update grid styling based on dot size and gap
+          const cellSize = dotSize;
+          const cellGap = gap;
+          const gridStyle = document.querySelector('style#gridStyle') || document.createElement('style');
+          gridStyle.id = 'gridStyle';
+          gridStyle.textContent = '.grid{ grid-template-columns: repeat(' + W + ', ' + cellSize + 'px); grid-auto-rows: ' + cellSize + 'px; gap: ' + cellGap + 'px; } .cell{ width: ' + cellSize + 'px; height: ' + cellSize + 'px; }';
+          if (!gridStyle.parentNode) document.head.appendChild(gridStyle);
+          
+          renderGrid();
+          renderTimeline();
+        }
+        
+        // Update the grid cell styling for dot size and gap even if dimensions didn't change
+        const cellSize = dotSize;
+        const cellGap = gap;
+        const gridStyle = document.querySelector('style#gridStyle') || document.createElement('style');
+        gridStyle.id = 'gridStyle';
+        gridStyle.textContent = '.grid{ grid-template-columns: repeat(' + W + ', ' + cellSize + 'px); grid-auto-rows: ' + cellSize + 'px; gap: ' + cellGap + 'px; } .cell{ width: ' + cellSize + 'px; height: ' + cellSize + 'px; }';
+        if (!gridStyle.parentNode) document.head.appendChild(gridStyle);
+        
+        alert('Display settings applied!\\nMode: ' + mode + '\\nSize: ' + W + '×' + H + '\\nDot size: ' + dotSize + 'px\\nGap: ' + gap + 'px');
+      });
     </script>
   </body>
 </html>`);
