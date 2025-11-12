@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>GIF Manager</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    #gifList { margin: 20px 0; }
+    .gif-item { padding: 10px; margin: 5px 0; background: #f0f0f0; border-radius: 5px; }
+    .gif-item button { margin: 0 5px; }
+    .gif-item.active { background: #90EE90; }
+  </style>
+</head>
+<body>
+  <h1>GIF Manager</h1>
+
+  <div>
+    <h2>Upload GIFs</h2>
+    <input type="file" id="fileInput" multiple accept=".gif" />
+    <button onclick="uploadGIFs()">Upload</button>
+    <p id="uploadStatus"></p>
+  </div>
+
+  <div>
+    <h2>Available GIFs</h2>
+    <div id="gifList"></div>
+  </div>
+
+  <script>
+    async function uploadGIFs() {
+      const files = document.getElementById("fileInput").files;
+      if (files.length === 0) {
+        alert("Select GIFs first");
+        return;
+      }
+
+      const formData = new FormData();
+      for (let file of files) {
+        formData.append("images", file);
+      }
+
+      try {
+        const res = await fetch("/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        document.getElementById("uploadStatus").textContent = `Uploaded: ${data.uploaded.map((f) => f.name).join(", ")}`;
+        refreshGIFList();
+      } catch (err) {
+        alert("Upload failed: " + err.message);
+      }
+    }
+
+    async function selectGIF(name) {
+      const res = await fetch("/select-gif", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      refreshGIFList();
+    }
+
+    async function deleteGIF(name) {
+      if (!confirm(`Delete ${name}?`)) return;
+      const res = await fetch("/delete-gif", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      refreshGIFList();
+    }
+
+    async function refreshGIFList() {
+      const res = await fetch("/gifs");
+      const data = await res.json();
+
+      let html = "";
+      for (const gif of data.gifs) {
+        const isActive = gif === data.current ? "active" : "";
+        html += `
+          <div class="gif-item ${isActive}">
+            <strong>${gif}</strong>
+            <button onclick="selectGIF('${gif}')">Play</button>
+            <button onclick="deleteGIF('${gif}')">Delete</button>
+          </div>
+        `;
+      }
+      document.getElementById("gifList").innerHTML = html;
+    }
+
+    refreshGIFList();
+  </script>
+</body>
+</html>
