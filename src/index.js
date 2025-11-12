@@ -241,7 +241,7 @@ ticker.start(({ deltaTime, elapsedTime }) => {
 
 
 
-// Start server
-app.listen(3000, () => {
+// Start server with WebSocket support
+server.listen(3000, () => {
   console.log("Server running on http://localhost:3000");
 });
