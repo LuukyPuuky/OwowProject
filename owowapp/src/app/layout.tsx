@@ -1,23 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import React from "react";
-import Navbar from "../components/Navbar";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "Owow App",
+  description: "Owow App Animation Hub",
+  generator: "next.js",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      <body>
-        <Navbar />
-        {children}
-      </body>
+      <body style={{ backgroundColor: "#161616" }}>{children}</body>
     </html>
   );
 }
