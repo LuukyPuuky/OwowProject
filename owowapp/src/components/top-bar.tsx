@@ -25,9 +25,9 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
   };
   return (
     <div className="px-6 py-4 flex items-center justify-between">
-      <Button 
-        variant="ghost" 
-        size="icon" 
+      <Button
+        variant="ghost"
+        size="icon"
         className="text-muted-foreground"
         onClick={onToggleSidebar}
       >
@@ -37,12 +37,12 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
       <div className="flex items-center gap-3">
         {/* Sort Dropdown */}
         <div className="relative">
-          <Button
-            variant="ghost"
-            onClick={handleSortToggle}
-            className="gap-2"
-          >
-            {sortOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <Button variant="ghost" onClick={handleSortToggle} className="gap-2">
+            {sortOpen ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
             Sort: {selectedSort}
           </Button>
           {sortOpen && (
@@ -72,11 +72,15 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
             onClick={handleFilterToggle}
             className="gap-2"
           >
-            {filterOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            {filterOpen ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
             Filter: {selectedFilter}
           </Button>
           {filterOpen && (
-            <div className="absolute top-full right-0 mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-10">
+            <div className="absolute top-full right-0  mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-10">
               <div className="py-1">
                 {["All", "Favorites", "Recent"].map((option) => (
                   <button

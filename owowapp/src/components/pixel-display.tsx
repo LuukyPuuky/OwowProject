@@ -7,11 +7,13 @@ import Image from "next/image";
 interface PixelDisplayProps {
   size?: "small" | "large";
   autoRefresh?: boolean;
+  animationType?: string;
 }
 
 export function PixelDisplay({
   size = "small",
   autoRefresh = true,
+  animationType = "1",
 }: PixelDisplayProps) {
   const [frameUrl, setFrameUrl] = useState<string>("/placeholder.svg");
   const [isLoading, setIsLoading] = useState(true);
