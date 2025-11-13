@@ -1,6 +1,6 @@
 import express from "express";
 import multer from "multer";
-import { createCanvas, loadImage} from "canvas";
+import { createCanvas, loadImage } from "canvas";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,41 +31,63 @@ if (!fs.existsSync(outputDir)) {
 // Setup multer for file uploads
 const upload = multer({ dest: "./uploads/" });
 
-// Store uploaded GIFs in memory
-const uploadedGIFs = new Map(); // { fileName: { frames, width, height, delays } }
-let currentGIF = null; // Currently playing GIF
+// Store uploaded GIFs/images in memory
+const uploadedGIFs = new Map(); // key: filename -> { type, frames, width, height, delays }
+let currentGIF = null;
 let currentFrameIndex = 0;
-let wsClients = []; // Store connected WebSocket clients
+let wsClients = []; // connected websocket clients
+
+// helper: broadcast current list to web clients
+function broadcastList() {
+  const payload = JSON.stringify({
+    type: "list",
+    gifs: Array.from(uploadedGIFs.keys()),
+    current: currentGIF,
+  });
+  wsClients.forEach((client) => {
+    if (client && client.readyState === 1) client.send(payload);
+  });
+}
 
 // Broadcast frame to all connected clients
 function broadcastFrame(imageData) {
   const data = imageData.data;
   const buffer = Buffer.from(data);
-  wsClients.forEach(client => {
-    if (client.readyState === WebSocketServer.OPEN) {
-      client.send(JSON.stringify({
-        type: 'frame',
-        data: buffer.toString('base64'),
-        width: imageData.width,
-        height: imageData.height
-      }));
+  wsClients.forEach((client) => {
+    if (client && client.readyState === 1) {
+      client.send(
+        JSON.stringify({
+          type: "frame",
+          data: buffer.toString("base64"),
+          width: imageData.width,
+          height: imageData.height,
+        })
+      );
     }
   });
 }
 
 // WebSocket connection handler
-wss.on('connection', (ws) => {
-  console.log('Client connected');
+wss.on("connection", (ws) => {
+  console.log("Client connected");
   wsClients.push(ws);
-  
-  ws.on('close', () => {
-    console.log('Client disconnected');
-    wsClients = wsClients.filter(c => c !== ws);
+
+  // immediately send current list/status
+  ws.send(
+    JSON.stringify({
+      type: "list",
+      gifs: Array.from(uploadedGIFs.keys()),
+      current: currentGIF,
+    })
+  );
+
+  ws.on("close", () => {
+    console.log("Client disconnected");
+    wsClients = wsClients.filter((c) => c !== ws);
   });
 });
 
-
-// Create display (your existing code)
+// Create display (Owow layout)
 const display = new Display({
   layout: LAYOUT,
   panelWidth: 28,
@@ -85,8 +107,8 @@ const display = new Display({
 
 const { width, height } = display;
 
-// **Upload multiple GIFs**
-app.post("/upload", upload.array("images", 10), async (req, res) => {
+// Upload handler (supports GIFs and static images)
+app.post("/upload", upload.array("images", 20), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: "No files uploaded" });
@@ -94,55 +116,72 @@ app.post("/upload", upload.array("images", 10), async (req, res) => {
 
     const uploadedFiles = [];
 
-for (const file of req.files) {
-  try {
-    const buffer = fs.readFileSync(file.path);
-    const ext = path.extname(file.originalname || "").toLowerCase();
-    const isGif = file.mimetype === "image/gif" || ext === ".gif";
+    for (const file of req.files) {
+      try {
+        const buffer = fs.readFileSync(file.path);
+        const ext = path.extname(file.originalname || "").toLowerCase();
+        const isGif = file.mimetype === "image/gif" || ext === ".gif";
+        const fileName = file.originalname || `img_${Date.now()}${ext || ".png"}`;
 
-    if (isGif) {
-      // existing GIF handling (gifuct-js)
-      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-      const gif = parseGIF(arrayBuffer);
-      const frames = decompressFrames(gif, true);
+        if (isGif) {
+          const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+          const gif = parseGIF(arrayBuffer);
+          const frames = decompressFrames(gif, true);
 
-      uploadedGIFs.set(fileName, {
-        type: "gif",
-        frames,
-        width: gif.lsd.width,
-        height: gif.lsd.height,
-        delays: frames.map((f) => (f.delay || 10) * 10),
-      });
-    } else {
-      // Static image: create a single RGBA frame compatible with your playback path
-      const img = await loadImage(buffer); // loadImage returns Image
-      const imgW = img.width;
-      const imgH = img.height;
-      const imgCanvas = createCanvas(imgW, imgH);
-      const imgCtx = imgCanvas.getContext("2d");
-      imgCtx.drawImage(img, 0, 0, imgW, imgH);
-      const imgData = imgCtx.getImageData(0, 0, imgW, imgH);
+          uploadedGIFs.set(fileName, {
+            type: "gif",
+            frames,
+            width: gif.lsd.width,
+            height: gif.lsd.height,
+            delays: frames.map((f) => (f.delay || 10) * 10),
+          });
 
-      // Create a single-frame array where frame.patch matches the GIF frame.patch format
-      const singleFrame = {
-        patch: new Uint8ClampedArray(imgData.data), // RGBA bytes
-        dims: { width: imgW, height: imgH, left: 0, top: 0 },
-      };
+          uploadedFiles.push({ name: fileName, frameCount: frames.length });
+        } else {
+          const img = await loadImage(buffer);
+          const imgW = img.width;
+          const imgH = img.height;
+          const imgCanvas = createCanvas(imgW, imgH);
+          const imgCtx = imgCanvas.getContext("2d");
+          imgCtx.drawImage(img, 0, 0, imgW, imgH);
+          const imgData = imgCtx.getImageData(0, 0, imgW, imgH);
 
-      uploadedGIFs.set(fileName, {
-        type: "image",
-        frames: [singleFrame],
-        width: imgW,
-        height: imgH,
-        delays: [100], // ms (unused by current ticker but set)
-      });
+          const singleFrame = {
+            patch: new Uint8ClampedArray(imgData.data),
+            dims: { width: imgW, height: imgH, left: 0, top: 0 },
+          };
+
+          uploadedGIFs.set(fileName, {
+            type: "image",
+            frames: [singleFrame],
+            width: imgW,
+            height: imgH,
+            delays: [100],
+          });
+
+          uploadedFiles.push({ name: fileName, frameCount: 1 });
+        }
+
+        // set current GIF if none selected
+        if (!currentGIF) {
+          currentGIF = fileName;
+          currentFrameIndex = 0;
+        }
+
+        // cleanup temp file
+        try {
+          fs.unlinkSync(file.path);
+        } catch (e) {
+          /* ignore */
+        }
+      } catch (err) {
+        console.error(`Error processing ${file.originalname}:`, err.message);
+      }
     }
 
-    // ...existing code for uploadedFiles, currentGIF init, cleanup...
-  } catch (err) {
-    console.error(`Error processing ${file.originalname}:`, err.message);
-  }
-}
+    // notify web clients
+    broadcastList();
+
     res.json({
       success: true,
       uploaded: uploadedFiles,
@@ -155,7 +194,7 @@ for (const file of req.files) {
   }
 });
 
-// **List all uploaded GIFs**
+// List all uploaded GIFs/images
 app.get("/gifs", (req, res) => {
   res.json({
     gifs: Array.from(uploadedGIFs.keys()),
@@ -163,71 +202,60 @@ app.get("/gifs", (req, res) => {
   });
 });
 
-// **Select a GIF to play**
+// Select a GIF/image to play
 app.post("/select-gif", express.json(), (req, res) => {
   const { name } = req.body;
-
-  if (!uploadedGIFs.has(name)) {
-    return res.status(404).json({ error: "GIF not found" });
-  }
-
+  if (!uploadedGIFs.has(name)) return res.status(404).json({ error: "GIF not found" });
   currentGIF = name;
   currentFrameIndex = 0;
-
-  res.json({
-    success: true,
-    currentGIF,
-  });
+  broadcastList();
+  res.json({ success: true, currentGIF });
 });
 
-// **Delete a GIF**
+// Delete a GIF/image
 app.post("/delete-gif", express.json(), (req, res) => {
   const { name } = req.body;
-
-  if (!uploadedGIFs.has(name)) {
-    return res.status(404).json({ error: "GIF not found" });
-  }
-
+  if (!uploadedGIFs.has(name)) return res.status(404).json({ error: "GIF not found" });
   uploadedGIFs.delete(name);
-
-  // If deleted GIF was playing, switch to first available
   if (currentGIF === name) {
     currentGIF = uploadedGIFs.size > 0 ? Array.from(uploadedGIFs.keys())[0] : null;
     currentFrameIndex = 0;
   }
-
-  res.json({
-    success: true,
-    allGIFs: Array.from(uploadedGIFs.keys()),
-    currentGIF,
-  });
+  broadcastList();
+  res.json({ success: true, allGIFs: Array.from(uploadedGIFs.keys()), currentGIF });
 });
 
-// **Main loop - play current GIF frame**
-const ticker = new Ticker({ fps: 15 });
+// Play route (acknowledges; playback loop already running)
+app.post("/play", express.json(), (req, res) => {
+  if (!currentGIF || !uploadedGIFs.has(currentGIF)) {
+    return res.status(400).json({ error: "No GIF selected" });
+  }
+  res.json({ success: true, message: "Playback acknowledged", currentGIF });
+});
+
+// Main loop - play current GIF/image frames
+const ticker = new Ticker({ fps: Math.max(1, FPS || 15) });
 
 ticker.start(({ deltaTime, elapsedTime }) => {
-  if (!currentGIF || !uploadedGIFs.has(currentGIF)) {
-    return; // No GIF selected
-  }
+  if (!currentGIF || !uploadedGIFs.has(currentGIF)) return;
 
   const gifData = uploadedGIFs.get(currentGIF);
   const frame = gifData.frames[currentFrameIndex];
 
-  // Draw frame to canvas
-  const frameCanvas = createCanvas(gifData.width, gifData.height);
+  // Create frame canvas and put RGBA patch
+  const frameCanvas = createCanvas(frame.dims.width, frame.dims.height);
   const frameCtx = frameCanvas.getContext("2d");
-  const frameImageData = frameCtx.createImageData(gifData.width, gifData.height);
+  const frameImageData = frameCtx.createImageData(frame.dims.width, frame.dims.height);
   frameImageData.data.set(frame.patch);
   frameCtx.putImageData(frameImageData, 0, 0);
 
-  // Scale/process to display size
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(frameCanvas, 0, 0, width, height);
+  // Scale to Owow display size
+  const outCanvas = createCanvas(width, height);
+  const outCtx = outCanvas.getContext("2d");
+  outCtx.drawImage(frameCanvas, 0, 0, width, height);
 
-  // Apply thresholding
-  const imageData = ctx.getImageData(0, 0, width, height);
+  // Binarize for flipdot display
+  const imageData = outCtx.getImageData(0, 0, width, height);
   const data = imageData.data;
   for (let i = 0; i < data.length; i += 4) {
     const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
@@ -235,26 +263,23 @@ ticker.start(({ deltaTime, elapsedTime }) => {
     data[i] = data[i + 1] = data[i + 2] = binary;
     data[i + 3] = 255;
   }
-  ctx.putImageData(imageData, 0, 0);
-   
-  // Broadcast frame to web clients
+  outCtx.putImageData(imageData, 0, 0);
+
+  // Broadcast frame to web clients for preview
   broadcastFrame(imageData);
 
-
-  // Send to display
+  // Send to Owow display or write PNG in dev
   if (!IS_DEV) {
     display.setImageData(imageData);
     if (display.isDirty()) display.flush();
   } else {
-    const filename = path.join("./output", "frame.png");
-    fs.writeFileSync(filename, canvas.toBuffer("image/png"));
+    const filename = path.join(outputDir, "frame.png");
+    fs.writeFileSync(filename, outCanvas.toBuffer("image/png"));
   }
 
-  // Advance frame
+  // Advance frame index
   currentFrameIndex = (currentFrameIndex + 1) % gifData.frames.length;
 });
-
-
 
 // Start server with WebSocket support
 server.listen(3000, () => {
