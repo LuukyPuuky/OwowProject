@@ -401,7 +401,7 @@ function createHandler() {
     </style>
   </head>
   <body>
-    <h2 style="margin:0 0 10px">Animation Maker</h2>
+    <h2 style="margin:0 0 10pnpmx">Animation Maker</h2>
     <div class="tools">
       <span style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap">
         <label for="animSel">Animation:</label>

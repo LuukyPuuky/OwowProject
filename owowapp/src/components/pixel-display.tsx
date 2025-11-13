@@ -23,11 +23,15 @@ export function PixelDisplay({
     if (!autoRefresh) return;
 
     const updateFrame = () => {
-      setIsLoading(true);
-      setFrameUrl(`/api/preview?t=${Date.now()}`);
+      const url = `/api/preview?t=${Date.now()}`;
+      setFrameUrl(url);
+      // Set loading false after a short delay to prevent infinite loading
+      setTimeout(() => setIsLoading(false), 100);
       frameRef.current = requestAnimationFrame(updateFrame);
     };
 
+    // Initial load
+    setTimeout(() => setIsLoading(false), 500);
     frameRef.current = requestAnimationFrame(updateFrame);
 
     return () => {

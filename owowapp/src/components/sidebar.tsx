@@ -93,6 +93,7 @@ export function Sidebar({
             <button
               onClick={() => setIsPreviewOpen(!isPreviewOpen)}
               className="w-full flex items-center justify-between text-sm font-medium mb-4 text-muted-foreground"
+              suppressHydrationWarning
             >
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-muted-foreground rounded-sm" />
@@ -129,6 +130,7 @@ export function Sidebar({
             <button
               onClick={() => setIsFavouritesOpen(!isFavouritesOpen)}
               className="w-full flex items-center justify-between text-sm font-medium text-muted-foreground"
+              suppressHydrationWarning
             >
               <div className="flex items-center gap-2">
                 <Star className="h-4 w-4 text-muted-foreground" />
