@@ -24,7 +24,6 @@ interface AnimationCardProps {
 export function AnimationCard({
   id,
   title,
-
   animationType,
   onDelete,
   onFavorite,
@@ -39,7 +38,6 @@ export function AnimationCard({
     if (onFavorite) {
       onFavorite(id);
     }
-    console.log("Added to favorites:", title);
   };
 
   const handleDelete = () => {

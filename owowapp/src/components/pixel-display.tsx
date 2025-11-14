@@ -8,6 +8,12 @@ interface PixelDisplayProps {
   size?: "small" | "large";
   autoRefresh?: boolean;
   animationType?: string;
+  renderer?: (
+    context: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    time: number
+  ) => void;
 }
 
 export function PixelDisplay({
@@ -25,7 +31,7 @@ export function PixelDisplay({
     if (!autoRefresh) return;
 
     const updateFrame = () => {
-      const url = `/api/preview?t=${Date.now()}`;
+      const url = `/api/preview?t=${Date.now()}&animationType=${animationType}`;
       setFrameUrl(url);
       // Set loading false after a short delay to prevent infinite loading
       setTimeout(() => setIsLoading(false), 100);
@@ -41,7 +47,7 @@ export function PixelDisplay({
         cancelAnimationFrame(frameRef.current);
       }
     };
-  }, [autoRefresh]);
+  }, [autoRefresh, animationType]); // Always include both dependencies
 
   return (
     <div
