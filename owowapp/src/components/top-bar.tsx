@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Menu, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -25,24 +26,38 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
   };
   return (
     <div className="px-6 py-4 flex items-center justify-between">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-muted-foreground"
-        onClick={onToggleSidebar}
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground"
+          onClick={onToggleSidebar}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        {/* Create & Library buttons next to collapse */}
+        <Link href="/create">
+          <Button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer">
+            Create
+          </Button>
+        </Link>
+        <Link href="/">
+          <Button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer">
+            Library
+          </Button>
+        </Link>
+      </div>
 
       <div className="flex items-center gap-3">
         {/* Sort Dropdown */}
         <div className="relative">
-          <Button variant="ghost" onClick={handleSortToggle} className="gap-2">
-            {sortOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
+          <Button
+            variant="ghost"
+            onClick={handleSortToggle}
+            className="gap-2 bg-[#1f1f1f] text-[#c3c3c3] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
+          >
+            {sortOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             Sort: {selectedSort}
           </Button>
           {sortOpen && (
@@ -70,17 +85,13 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
           <Button
             variant="outline"
             onClick={handleFilterToggle}
-            className="gap-2"
+            className="gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
           >
-            {filterOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
+            {filterOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             Filter: {selectedFilter}
           </Button>
           {filterOpen && (
-            <div className="absolute top-full right-0  mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-10">
+            <div className="absolute top-full right-0 mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-10">
               <div className="py-1">
                 {["All", "Favorites", "Recent"].map((option) => (
                   <button
