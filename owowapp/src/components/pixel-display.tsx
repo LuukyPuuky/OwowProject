@@ -1,75 +1,77 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
-import Image from "next/image";
 
-interface PixelDisplayProps {
-  size?: "small" | "large";
-  autoRefresh?: boolean;
-  animationType?: string;
-}
-
-export function PixelDisplay({
-  size = "small",
-  autoRefresh = true,
-  animationType = "1",
-}: PixelDisplayProps) {
-  const [frameUrl, setFrameUrl] = useState<string>("/placeholder.svg");
-  const [isLoading, setIsLoading] = useState(true);
-  const frameRef = useRef<number | null>(null);
-
-  const scale = size === "large" ? 4 : 2;
+export function PixelDisplay({ animation }: { animation?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
-    if (!autoRefresh) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const updateFrame = () => {
-      const url = `/api/preview?t=${Date.now()}`;
-      setFrameUrl(url);
-      // Set loading false after a short delay to prevent infinite loading
-      setTimeout(() => setIsLoading(false), 100);
-      frameRef.current = requestAnimationFrame(updateFrame);
-    };
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    // Initial load
-    setTimeout(() => setIsLoading(false), 500);
-    frameRef.current = requestAnimationFrame(updateFrame);
+    let animationFrameId: NodeJS.Timeout;
 
-    return () => {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
+    const updateFrame = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (animation) params.append("animation", animation);
+
+        const res = await fetch(`/api/preview?${params}`);
+        const data = await res.json();
+
+        if (data.data) {
+          // Decode base64 if string
+          let pixels;
+          if (typeof data.data === "string") {
+            const binary = atob(data.data);
+            pixels = new Uint8ClampedArray(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              pixels[i] = binary.charCodeAt(i);
+            }
+          } else {
+            pixels = new Uint8ClampedArray(data.data);
+          }
+
+          const imageData = new ImageData(pixels, data.width, data.height);
+          ctx.putImageData(imageData, 0, 0);
+        }
+      } catch (err) {
+        console.error("Frame fetch error:", err);
+      }
+
+      if (isPlaying) {
+        animationFrameId = setTimeout(updateFrame, 1000 / 30); // 30 FPS
       }
     };
-  }, [autoRefresh]);
+
+    if (isPlaying) {
+      updateFrame();
+    }
+
+    return () => {
+      if (animationFrameId) clearTimeout(animationFrameId);
+    };
+  }, [isPlaying, animation]);
 
   return (
-    <div
-      className="flex items-center justify-center"
-      style={{ width: 80 * scale, height: 20 * scale }}
-    >
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-xs">Loading...</span>
-        </div>
-      ) : (
-        <Image
-          width={80 * scale}
-          height={20 * scale}
-          src={frameUrl}
-          alt="Pixel display"
-          style={{
-            width: 80 * scale,
-            height: 20 * scale,
-            imageRendering: "pixelated",
-          }}
-          className="object-contain"
-          unoptimized={frameUrl.startsWith("/api/preview")}
-          onLoad={() => setIsLoading(false)}
-          onError={() => setIsLoading(false)}
-        />
-      )}
+    <div className="flex flex-col gap-4">
+      <canvas
+        ref={canvasRef}
+        width={112}
+        height={16}
+        className="border-2 border-gray-300 bg-black w-full max-w-lg"
+        style={{ imageRendering: "pixelated" }}
+      />
+      <button
+        onClick={() => setIsPlaying(!isPlaying)}
+        className="px-4 py-2 bg-blue-500 text-white rounded"
+      >
+        {isPlaying ? "Stop" : "Play"}
+      </button>
     </div>
   );
 }

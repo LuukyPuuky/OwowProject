@@ -24,3 +24,15 @@ export const starBounceAnimation: AnimationRenderer = (ctx, frame, config) => {
   ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
   ctx.fill();
 };
+
+export function starBounce(
+  ctx: CanvasRenderingContext2D,
+  frame: number,
+  width: number,
+  height: number
+) {
+  ctx.fillStyle = "#fff";
+  const x = ((frame % 112) / 112) * width;
+  const y = height / 2;
+  ctx.fillRect(x, y - 2, 4, 4);
+}

@@ -34,3 +34,20 @@ export const textScrollAnimation: AnimationRenderer = (ctx, frame, config) => {
     ctx.fillText(text, Math.floor(x + textWidth), Math.floor(y));
   }
 };
+
+export function textScroll(
+  ctx: CanvasRenderingContext2D,
+  frame: number,
+  width: number,
+  height: number
+) {
+  ctx.fillStyle = "#fff";
+  ctx.font = "8px monospace";
+  ctx.textBaseline = "middle";
+  
+  const text = "HELLO";
+  const x = width - ((frame % (width + 80)) - 80);
+  const y = height / 2;
+  
+  ctx.fillText(text, x, y);
+}

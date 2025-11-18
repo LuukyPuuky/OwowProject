@@ -3,6 +3,11 @@ import { timerAnimation, timerMetadata } from "././timer";
 import { logoAnimation, logoMetadata } from "././logo";
 import { waveAnimation, waveMetadata } from "././wave";
 import { textScrollAnimation, textScrollMetadata } from "././text-scroll";
+export { starBounce } from "./star-bounce";
+export { textScroll } from "./text-scroll";
+export { wave } from "./wave";
+export { timer } from "./timer";
+export { logo } from "./logo";
 
 export const animations = {
   "star-bounce": {

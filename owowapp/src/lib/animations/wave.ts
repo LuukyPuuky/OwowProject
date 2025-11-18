@@ -30,3 +30,21 @@ export const waveAnimation: AnimationRenderer = (ctx, frame, config) => {
     ctx.fill();
   }
 };
+
+export function wave(
+  ctx: CanvasRenderingContext2D,
+  frame: number,
+  width: number,
+  height: number
+) {
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  
+  for (let x = 0; x < width; x++) {
+    const y = height / 2 + Math.sin((x + frame) * 0.1) * (height / 4);
+    if (x === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
