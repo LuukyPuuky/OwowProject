@@ -24,20 +24,31 @@ export function PixelDisplay({ animation }: { animation?: string }) {
         const data = await res.json();
 
         if (data.data) {
-          // Decode base64 if string
-          let pixels;
-          if (typeof data.data === "string") {
-            const binary = atob(data.data);
-            pixels = new Uint8ClampedArray(binary.length);
-            for (let i = 0; i < binary.length; i++) {
-              pixels[i] = binary.charCodeAt(i);
-            }
-          } else {
-            pixels = new Uint8ClampedArray(data.data);
+          const expectedLen = data.width * data.height * 4;
+
+          // Decode base64
+          const binary = atob(data.data);
+
+          // If length matches RGBA buffer, treat as raw pixels
+          if (binary.length === expectedLen) {
+            const arr = new Uint8ClampedArray(binary.length);
+            for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+            const imageData = new ImageData(arr, data.width, data.height);
+            ctx.putImageData(imageData, 0, 0);
+            return;
           }
 
-          const imageData = new ImageData(pixels, data.width, data.height);
-          ctx.putImageData(imageData, 0, 0);
+          // Otherwise assume PNG/bitmap base64 -> draw as image
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          const blob = new Blob([bytes], { type: "image/png" });
+
+          createImageBitmap(blob)
+            .then((bitmap) => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            })
+            .catch((err) => console.error("createImageBitmap error", err));
         }
       } catch (err) {
         console.error("Frame fetch error:", err);

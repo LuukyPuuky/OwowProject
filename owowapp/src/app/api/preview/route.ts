@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCanvas } from "canvas";
-import { getAnimation, AnimationId } from "@/lib/animations";
+import * as Animations from "@/lib/animations";
 
 const DISPLAY_WIDTH = 112;
 const DISPLAY_HEIGHT = 16;
@@ -13,26 +13,27 @@ export async function GET(request: NextRequest) {
     if (!animationStates.has(name)) animationStates.set(name, { frameIndex: 0 });
     const state = animationStates.get(name)!;
 
-    // get animation entry (renderer + metadata)
-    const entry = getAnimation(name as AnimationId);
-    if (!entry || typeof entry.renderer !== "function") {
+    // Get animation function from exports
+    const animationFn = (Animations as any)[name];
+    if (!animationFn || typeof animationFn !== "function") {
       return NextResponse.json({ error: `Animation "${name}" not found` }, { status: 404 });
     }
 
     const canvas = createCanvas(DISPLAY_WIDTH, DISPLAY_HEIGHT);
-    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+    const ctx = canvas.getContext("2d") 
     if (!ctx) throw new Error("Failed to get canvas context");
 
-    // clear background
+    // Clear background
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
-    // call renderer from animations index
-    entry.renderer(ctx, state.frameIndex, DISPLAY_WIDTH, DISPLAY_HEIGHT);
+    // Call animation renderer
+    animationFn(ctx, state.frameIndex, DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
-    // advance frame
+    // Advance frame
     state.frameIndex = (state.frameIndex + 1) % 1000;
 
+    // Convert canvas to PNG base64
     const buffer = canvas.toBuffer("image/png");
     return NextResponse.json({
       type: "frame",
