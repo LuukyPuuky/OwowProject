@@ -3,6 +3,7 @@ import { timerAnimation, timerMetadata } from "././timer";
 import { logoAnimation, logoMetadata } from "././logo";
 import { waveAnimation, waveMetadata } from "././wave";
 import { textScrollAnimation, textScrollMetadata } from "././text-scroll";
+import { pongAnimation, pongMetadata } from "././pong";
 
 export const animations = {
   "star-bounce": {
@@ -16,6 +17,7 @@ export const animations = {
     renderer: textScrollAnimation,
     metadata: textScrollMetadata,
   },
+  pong: { renderer: pongAnimation, metadata: pongMetadata },
 };
 
 export type AnimationId = keyof typeof animations;

@@ -2,12 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
-import Image from "next/image";
 
 interface PixelDisplayProps {
   size?: "small" | "large";
   autoRefresh?: boolean;
   animationType?: string;
+  renderer?: (
+    context: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    time: number
+  ) => void;
 }
 
 export function PixelDisplay({
@@ -15,61 +20,117 @@ export function PixelDisplay({
   autoRefresh = true,
   animationType = "1",
 }: PixelDisplayProps) {
-  const [frameUrl, setFrameUrl] = useState<string>("/placeholder.svg");
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const frameRef = useRef<number | null>(null);
 
   const scale = size === "large" ? 4 : 2;
+  const width = 80;
+  const height = 20;
 
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const updateFrame = () => {
-      const url = `/api/preview?t=${Date.now()}`;
-      setFrameUrl(url);
-      // Set loading false after a short delay to prevent infinite loading
-      setTimeout(() => setIsLoading(false), 100);
-      frameRef.current = requestAnimationFrame(updateFrame);
-    };
+    const controller = new AbortController();
+    let isMounted = true;
 
-    // Initial load
-    setTimeout(() => setIsLoading(false), 500);
-    frameRef.current = requestAnimationFrame(updateFrame);
+    const startStream = async () => {
+      try {
+        setIsLoading(true);
+        const safeAnimationType = animationType || "star-bounce";
+        const response = await fetch(
+          `/api/stream?animationType=${safeAnimationType}`,
+          {
+            signal: controller.signal,
+          }
+        );
 
-    return () => {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
+        if (!response.body) return;
+
+        const reader = response.body.getReader();
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        // Disable smoothing for pixel art look
+        ctx.imageSmoothingEnabled = false;
+
+        setIsLoading(false);
+
+        const frameSize = width * height;
+        let bufferAccumulator = new Uint8Array(0);
+
+        while (isMounted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          // Append new data to accumulator
+          const newBuffer = new Uint8Array(
+            bufferAccumulator.length + value.length
+          );
+          newBuffer.set(bufferAccumulator);
+          newBuffer.set(value, bufferAccumulator.length);
+          bufferAccumulator = newBuffer;
+
+          // Process complete frames
+          while (bufferAccumulator.length >= frameSize) {
+            const frameData = bufferAccumulator.slice(0, frameSize);
+            bufferAccumulator = bufferAccumulator.slice(frameSize);
+
+            // Draw frame
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+
+            for (let i = 0; i < frameSize; i++) {
+              const pixelValue = frameData[i];
+              const index = i * 4;
+              data[index] = pixelValue; // R
+              data[index + 1] = pixelValue; // G
+              data[index + 2] = pixelValue; // B
+              data[index + 3] = 255; // Alpha
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+          }
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Stream error:", error);
+        }
       }
     };
-  }, [autoRefresh]);
+
+    startStream();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [autoRefresh, animationType]);
 
   return (
     <div
-      className="flex items-center justify-center"
-      style={{ width: 80 * scale, height: 20 * scale }}
+      className="flex items-center justify-center bg-black rounded-lg overflow-hidden"
+      style={{ width: width * scale, height: height * scale }}
     >
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+      {isLoading && (
+        <div className="absolute flex flex-col items-center justify-center gap-2 text-muted-foreground z-10">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-xs">Loading...</span>
         </div>
-      ) : (
-        <Image
-          width={80 * scale}
-          height={20 * scale}
-          src={frameUrl}
-          alt="Pixel display"
-          style={{
-            width: 80 * scale,
-            height: 20 * scale,
-            imageRendering: "pixelated",
-          }}
-          className="object-contain"
-          unoptimized={frameUrl.startsWith("/api/preview")}
-          onLoad={() => setIsLoading(false)}
-          onError={() => setIsLoading(false)}
-        />
       )}
+      <canvas
+        ref={canvasRef}
+        width={width}
+        height={height}
+        style={{
+          width: width * scale,
+          height: height * scale,
+          imageRendering: "pixelated",
+          opacity: isLoading ? 0 : 1,
+          transition: "opacity 0.2s",
+        }}
+      />
     </div>
   );
 }
