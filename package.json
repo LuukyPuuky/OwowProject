@@ -6,6 +6,7 @@
     "lint": "cd owowapp && npm run lint"
   },
   "dependencies": {
+    "canvas": "^3.2.0",
     "lucide-react": "^0.544.0"
   }
 }

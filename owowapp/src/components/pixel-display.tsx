@@ -31,9 +31,9 @@ export function PixelDisplay({
     if (!autoRefresh) return;
 
     const updateFrame = () => {
-      const url = `/api/preview?t=${Date.now()}&animationType=${animationType}`;
+      const safeAnimationType = animationType || "star-bounce";
+      const url = `/api/preview?t=${Date.now()}&animationType=${safeAnimationType}`;
       setFrameUrl(url);
-      // Set loading false after a short delay to prevent infinite loading
       setTimeout(() => setIsLoading(false), 100);
       frameRef.current = requestAnimationFrame(updateFrame);
     };
@@ -47,7 +47,8 @@ export function PixelDisplay({
         cancelAnimationFrame(frameRef.current);
       }
     };
-  }, [autoRefresh, animationType]); // Always include both dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, animationType || "1"]); // Always include both dependencies
 
   return (
     <div

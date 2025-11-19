@@ -64,7 +64,7 @@ export function AnimationCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="shadow-lg bg-card border-2 border-border "
+              className="shadow-lg bg-card border-2 border-border"
             >
               <DropdownMenuItem
                 onClick={(event) => {
@@ -89,7 +89,11 @@ export function AnimationCard({
         </div>
 
         <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
-          <PixelDisplay size="small" animationType={animationType} />
+          <PixelDisplay
+            size="small"
+            animationType={animationType || id || "1"}
+            autoRefresh={true}
+          />
         </div>
 
         <div className="space-y-2">
