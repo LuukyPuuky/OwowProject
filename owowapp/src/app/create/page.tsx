@@ -1,9 +1,10 @@
 "use client";
-
 import { useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { PixelDisplay } from "@/components/pixel-display";
 import { Star, Menu } from "lucide-react";
+import { ControlPanel } from "@/components/control-panel";
+import LatestAnimations from "@/components/latest-animations";
 
 export default function CreatePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,75 +78,30 @@ export default function CreatePage() {
               ))}
             </div>
 
-            {/* Animations grid */}
+            {/* Latest animations component */}
             <div>
-              <div className="mb-3">
-                <button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md">
-                  Latest Animations
-                </button>
-              </div>
-
-              <div className="grid grid-cols-4 gap-4">
-                {cards.map((c) => (
-                  <div key={c.id} className="bg-card border-2 border-border rounded-lg p-3 text-muted-foreground">
-                    <div className="bg-black h-24 rounded-md mb-3 flex items-center justify-center">
-                      <Star className="h-8 w-8 text-muted-foreground" />
-                    </div>
-                    <div className="text-sm">{c.name}</div>
-                    <div className="text-xs text-[#494949] mt-2">Equipped</div>
-                  </div>
-                ))}
-              </div>
+              <LatestAnimations
+                animations={undefined}
+                onAnimationSelect={(id) => {
+                  // placeholder handler
+                }}
+                onMenuClick={(id) => {
+                  // placeholder handler
+                }}
+              />
             </div>
           </div>
 
           {/* Right control panel */}
           <aside className="col-span-4">
-            <div className="bg-card border-2 border-border rounded-md p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <input className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] rounded px-2 py-1 w-36" defaultValue="Untitled" />
-                <div className="flex items-center gap-2">
-                  <button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md">Create New</button>
-                  <button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md">Save</button>
-                </div>
-              </div>
-
-              <div className="border-t border-border pt-3 space-y-3">
-                <button className="w-full bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-2 rounded-md">Play ▸</button>
-
-                <div className="flex gap-2">
-                  <button className="flex-1 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-2 py-1 rounded-md">+ Add Frame</button>
-                  <button className="flex-1 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-2 py-1 rounded-md">Duplicate</button>
-                </div>
-
-                <label className="text-sm text-muted-foreground">Size</label>
-                <input type="range" className="w-full" />
-
-                <label className="text-sm text-muted-foreground">Brush Type</label>
-                <div className="flex gap-2">
-                  <div className="w-8 h-8 bg-[#1f1f1f] border-2 border-[#323232] rounded-md" />
-                  <div className="w-8 h-8 bg-[#1f1f1f] border-2 border-[#323232] rounded-md" />
-                  <div className="w-8 h-8 bg-[#1f1f1f] border-2 border-[#323232] rounded-md" />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-muted-foreground">Onion Slicer</label>
-                  <input type="checkbox" />
-                </div>
-
-                <div className="flex gap-2">
-                  <button className="flex-1 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-2 py-1 rounded-md">Next Frame</button>
-                  <button className="flex-1 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-2 py-1 rounded-md">Prev Frame</button>
-                </div>
-
-                <div>
-                  <label className="text-sm text-muted-foreground">Frame Duration</label>
-                  <input className="w-full bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] rounded px-2 py-1" defaultValue="300 ms" />
-                </div>
-
-                <button className="w-full bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-2 rounded-md">Remove Frame</button>
-              </div>
-            </div>
+            <ControlPanel
+              onPlay={() => {}}
+              onCreateNew={() => {}}
+              onSave={() => {}}
+              onAddFrame={() => {}}
+              onDuplicate={() => {}}
+              onRemoveFrame={() => {}}
+            />
           </aside>
         </div>
       </main>
