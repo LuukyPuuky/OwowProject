@@ -63,6 +63,40 @@ export class DisplayManager {
     return this.canvas.toBuffer("image/png");
   }
 
+  async renderRaw(frame: AnimationFrame): Promise<Buffer> {
+    const { ctx, config } = this;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, config.width, config.height);
+
+    // Fill with black background
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, config.width, config.height);
+
+    // Render current animation
+    if (this.currentRenderer) {
+      this.currentRenderer(ctx, frame, config);
+    }
+
+    // Get raw pixel data
+    const imageData = ctx.getImageData(0, 0, config.width, config.height);
+    const data = imageData.data;
+    const pixelCount = config.width * config.height;
+    const rawBuffer = Buffer.alloc(pixelCount);
+
+    // Convert to 1-byte per pixel (grayscale/binary)
+    // We'll use the red channel as the brightness value since it's black and white
+    for (let i = 0; i < pixelCount; i++) {
+      const r = data[i * 4];
+      const g = data[i * 4 + 1];
+      const b = data[i * 4 + 2];
+      // Simple brightness calculation
+      rawBuffer[i] = Math.round((r + g + b) / 3);
+    }
+
+    return rawBuffer;
+  }
+
   getConfig() {
     return this.config;
   }
