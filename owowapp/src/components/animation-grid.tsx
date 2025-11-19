@@ -11,6 +11,8 @@ interface AnimationGridProps {
   onAddFavorite: (id: string) => void;
   deletedIds: Set<string>;
   onDelete: (id: string) => void;
+  equippedId: string;
+  onEquip: (id: string) => void;
 }
 
 export function AnimationGrid({
@@ -20,6 +22,8 @@ export function AnimationGrid({
   onAddFavorite,
   deletedIds,
   onDelete,
+  equippedId,
+  onEquip,
 }: AnimationGridProps) {
   type Animation = {
     id: string;
@@ -66,6 +70,8 @@ export function AnimationGrid({
             isFavorite={favorites.has(animation.id)}
             onDelete={onDelete}
             onFavorite={onAddFavorite}
+            isEquipped={equippedId === animation.id}
+            onEquip={onEquip}
           />
         ))}
       </div>

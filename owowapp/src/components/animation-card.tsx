@@ -19,6 +19,8 @@ interface AnimationCardProps {
   isFavorite?: boolean;
   onDelete: (id: string) => void;
   onFavorite: (id: string) => void;
+  isEquipped: boolean;
+  onEquip: (id: string) => void;
 }
 
 export function AnimationCard({
@@ -27,11 +29,11 @@ export function AnimationCard({
   animationType,
   onDelete,
   onFavorite,
+  isEquipped,
+  onEquip,
 }: AnimationCardProps) {
-  const [isEquipped, setIsEquipped] = useState(false);
-
   const handleCardClick = () => {
-    setIsEquipped(!isEquipped);
+    onEquip(id);
   };
 
   const handleAddToFavorites = () => {

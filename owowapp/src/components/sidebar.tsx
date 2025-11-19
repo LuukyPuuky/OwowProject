@@ -13,6 +13,8 @@ import { Input } from "../components/ui/input";
 import { PixelDisplay } from "@/components/pixel-display";
 import { animations } from "@/lib/animations";
 
+import { AnimationMetadata } from "@/lib/display/types";
+
 interface SidebarProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -20,6 +22,7 @@ interface SidebarProps {
   onToggleSidebar: () => void;
   favorites?: Set<string>;
   onRemoveFavorite: (id: string) => void;
+  equippedAnimation?: AnimationMetadata;
 }
 
 export function Sidebar({
@@ -29,6 +32,7 @@ export function Sidebar({
   onToggleSidebar,
   favorites,
   onRemoveFavorite,
+  equippedAnimation,
 }: SidebarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isFavouritesOpen, setIsFavouritesOpen] = useState(false);
@@ -131,15 +135,19 @@ export function Sidebar({
             {isPreviewOpen && (
               <div className="space-y-4">
                 <div className="aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
-                  <PixelDisplay size="large" />
+                  <PixelDisplay
+                    size="large"
+                    animationType={equippedAnimation?.id || "star-bounce"}
+                  />
                 </div>
 
                 <div className="border-3 border-border rounded-lg p-4 space-y-2">
                   <h3 className="font-medium text-muted-foreground">
-                    Star animation
+                    {equippedAnimation?.name || "Star animation"}
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Displays a star that moves in different directions
+                    {equippedAnimation?.description ||
+                      "Displays a star that moves in different directions"}
                   </p>
                 </div>
               </div>
