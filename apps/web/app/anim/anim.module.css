@@ -1,0 +1,461 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #2b2b2b;
+  color: #e0e0e0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+}
+
+/* Menu Bar */
+.menubar {
+  background: #1e1e1e;
+  border-bottom: 1px solid #000;
+  padding: 8px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: 40px;
+}
+
+.menubar h1 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.menubarSpacer {
+  flex: 1;
+}
+
+.menubarGroup {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Workspace */
+.workspace {
+  display: flex;
+  height: calc(100vh - 40px);
+}
+
+/* Left Vertical Toolbar */
+.leftToolbar {
+  background: #1e1e1e;
+  width: 52px;
+  border-right: 1px solid #000;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  gap: 2px;
+}
+
+.toolGroup {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  border-bottom: 1px solid #333;
+}
+
+.toolGroup:last-child {
+  border-bottom: none;
+}
+
+/* Icon Buttons */
+.iconBtn {
+  background: transparent;
+  border: none;
+  color: #b0b0b0;
+  width: 36px;
+  height: 36px;
+  margin: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+}
+
+.iconBtn:hover {
+  background: #3a3a3a;
+  color: #fff;
+}
+
+.iconBtn.active {
+  background: #0d7acc;
+  color: #fff;
+}
+
+/* Side Panels */
+.sidePanel {
+  background: #262626;
+  width: 240px;
+  border-right: 1px solid #1a1a1a;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidePanel.right {
+  border-right: none;
+  border-left: 1px solid #1a1a1a;
+}
+
+/* Panel Sections */
+.panelSection {
+  padding: 16px 12px;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.panelSection h3 {
+  margin: 0 0 12px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Center Panel */
+.centerPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #2b2b2b;
+  overflow: hidden;
+}
+
+.canvasArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 20px;
+}
+
+.gridContainer {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.grid {
+  display: grid;
+  gap: 2px;
+  background: #0a0a0a;
+  padding: 8px;
+  border-radius: 2px;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.cell {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  background: #1a1a1a;
+  border-radius: 50%;
+  transition: background 0.05s;
+  pointer-events: none;
+}
+
+.cell:hover {
+  background: #2a2a2a;
+}
+
+.cell.on {
+  background: #fff;
+}
+
+.cell.prev:not(.on) {
+  background: #444;
+}
+
+.cell.next:not(.on) {
+  background: #666;
+}
+
+.cell.selected {
+  box-shadow: 0 0 0 2px #00aaff;
+}
+
+.grid.noGrid {
+  gap: 0;
+}
+
+/* Timeline */
+.timelineArea {
+  background: #1e1e1e;
+  border-top: 1px solid #000;
+  padding: 12px 16px;
+  height: 140px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.timelineHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.timelineHeader h3 {
+  margin: 0;
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.timelineControls {
+  display: flex;
+  gap: 4px;
+}
+
+.timeline {
+  display: flex;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.frameThumb {
+  display: grid;
+  grid-template-columns: repeat(var(--w), 2px);
+  grid-auto-rows: 2px;
+  gap: 1px;
+  padding: 4px;
+  background: #0a0a0a;
+  border: 2px solid #2a2a2a;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.1s;
+  flex-shrink: 0;
+}
+
+.frameThumb:hover {
+  border-color: #4a4a4a;
+}
+
+.frameThumb.active {
+  border-color: #0d7acc;
+}
+
+.frameThumb .p {
+  width: 2px;
+  height: 2px;
+  background: #1a1a1a;
+}
+
+.frameThumb .p.on {
+  background: #fff;
+}
+
+/* Tool Buttons */
+.toolBtn {
+  background: #3a3a3a;
+  border: 1px solid #4a4a4a;
+  color: #e0e0e0;
+  padding: 6px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.1s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.toolBtn:hover {
+  background: #4a4a4a;
+}
+
+.toolBtn.active {
+  background: #0d7acc;
+  border-color: #0d7acc;
+  color: #fff;
+}
+
+.toolBtn.danger {
+  background: #5a1a1a;
+  border-color: #6a2020;
+}
+
+.toolBtn.danger:hover {
+  background: #6a2020;
+}
+
+.toolBtn.primary {
+  background: #0d7acc;
+  border-color: #0d7acc;
+  color: #fff;
+}
+
+.toolBtn.primary:hover {
+  background: #1583d4;
+}
+
+/* Inputs */
+.sidePanel input[type="text"],
+.sidePanel input[type="number"],
+.sidePanel select {
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  color: #e0e0e0;
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  width: 100%;
+  font-family: inherit;
+}
+
+.sidePanel input[type="text"]:focus,
+.sidePanel input[type="number"]:focus,
+.sidePanel select:focus {
+  outline: none;
+  border-color: #0d7acc;
+}
+
+.sidePanel input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 3px;
+  background: #3a3a3a;
+  border-radius: 2px;
+  outline: none;
+}
+
+.sidePanel input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #0d7acc;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.sidePanel input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: #0d7acc;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.sidePanel input[type="checkbox"] {
+  accent-color: #0d7acc;
+}
+
+/* Property Rows */
+.propRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.propRow label {
+  font-size: 11px;
+  color: #888;
+}
+
+.propRowInline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.propRowInline label {
+  font-size: 11px;
+  color: #888;
+  flex: 1;
+}
+
+.propValue {
+  font-size: 11px;
+  color: #b0b0b0;
+  margin-top: 2px;
+}
+
+/* Button Groups */
+.btnGroup {
+  display: flex;
+  gap: 4px;
+}
+
+.btnGroup .toolBtn {
+  flex: 1;
+  padding: 5px 8px;
+}
+
+/* Badge */
+.badge {
+  background: #3a3a3a;
+  padding: 3px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  color: #888;
+  display: inline-block;
+}
+
+/* HUD in menubar */
+.hud {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: 12px;
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 6px;
+  color: #dcdcdc;
+  font-size: 12px;
+}
+
+.hud span { opacity: 0.95; }
+
+/* HUD buttons */
+.hudBtn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: inherit;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.hudBtn:hover { background: rgba(255,255,255,0.03); }
+
+/* Cursor badge */
+.cursorBadge {
+  position: fixed;
+  pointer-events: none;
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  transform: translate(-50%, -100%);
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 30px;
+  background: rgba(0,0,0,0.9);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  z-index: 9999;
+  font-size: 13px;
+}

@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 3, "column": 0}, "map": {"version":3,"sources":[],"names":[],"mappings":"","debugId":null}},
-    {"offset": {"line": 55, "column": 0}, "map": {"version":3,"sources":["file:///Users/nicokornuijt/OwowProject/owowapp/src/app/api/preview/route.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\n\nexport async function GET() {\n  const { animationEngine } = await import(\"@/lib/animation-engine\");\n\n  const frame = animationEngine.getLatestFrame();\n\n  if (!frame) {\n    return new NextResponse(\"No frame available\", { status: 404 });\n  }\n\n  return new NextResponse(Uint8Array.from(frame), {\n    headers: {\n      \"Content-Type\": \"image/png\",\n      \"Cache-Control\": \"no-cache, no-store, must-revalidate\",\n    },\n  });\n}\n\nexport const dynamic = \"force-dynamic\";\n"],"names":[],"mappings":";;;;;;AAAA;;AAEO,eAAe;IACpB,MAAM,EAAE,eAAe,EAAE,GAAG;IAE5B,MAAM,QAAQ,gBAAgB,cAAc;IAE5C,IAAI,CAAC,OAAO;QACV,OAAO,IAAI,2JAAY,CAAC,sBAAsB;YAAE,QAAQ;QAAI;IAC9D;IAEA,OAAO,IAAI,2JAAY,CAAC,WAAW,IAAI,CAAC,QAAQ;QAC9C,SAAS;YACP,gBAAgB;YAChB,iBAAiB;QACnB;IACF;AACF;AAEO,MAAM,UAAU","debugId":null}}]
-}

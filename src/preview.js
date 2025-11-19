@@ -2,6 +2,7 @@ import http from "node:http";
 import https from "node:https";
 import fs from "node:fs";
 import url from "node:url";
+import path from "node:path";
 
 // In-memory mood entries: { mood: 'happy'|'sad', ts: number ms }
 const moodEntries = [];
@@ -9,6 +10,9 @@ const WINDOW_MS = 20 * 60 * 1000; // last 20 minutes
 // Active scene state (UI-selectable). Default from env or 'mood'
 const DEFAULT_SCENE = (process.env.SCENE ? String(process.env.SCENE) : 'mood').toLowerCase();
 let activeScene = DEFAULT_SCENE;
+
+// Persistent animation storage
+const ANIM_STORAGE_PATH = path.join(process.cwd(), 'output', 'animations.json');
 
 function addMoodLabel(label) {
 	if (label !== "happy" && label !== "sad") return false;
@@ -36,6 +40,52 @@ function getMajorityMood(windowMs = WINDOW_MS) {
 	if (happy === 0 && sad === 0) return { majority: "neutral", happy, sad };
 	if (happy === sad) return { majority: "neutral", happy, sad };
 	return { majority: happy > sad ? "happy" : "sad", happy, sad };
+}
+
+function loadAnimations() {
+	try {
+		if (fs.existsSync(ANIM_STORAGE_PATH)) {
+			const data = fs.readFileSync(ANIM_STORAGE_PATH, 'utf8');
+			const parsed = JSON.parse(data);
+			console.log('[anim] Loaded animations from disk:', Object.keys(parsed.items || {}).join(', '));
+			return parsed;
+		}
+	} catch (err) {
+		console.error('[anim] Failed to load animations:', err.message);
+	}
+	return { active: 'default', items: { default: { w: 84, h: 28, frames: [], text: { enable: false, url: '', field: '', intervalMs: 30000 } } } };
+}
+
+function saveAnimations(store) {
+	try {
+		// Ensure output directory exists
+		const dir = path.dirname(ANIM_STORAGE_PATH);
+		if (!fs.existsSync(dir)) {
+			fs.mkdirSync(dir, { recursive: true });
+		}
+		// Don't save textCache (temporary runtime data)
+		const toSave = {
+			active: store.active,
+			items: {}
+		};
+		for (const [name, item] of Object.entries(store.items)) {
+			toSave.items[name] = {
+				w: item.w,
+				h: item.h,
+				frames: item.frames,
+				text: item.text
+			};
+		}
+		fs.writeFileSync(ANIM_STORAGE_PATH, JSON.stringify(toSave, null, 2), 'utf8');
+		console.log('[anim] Saved animations to disk:', Object.keys(toSave.items).join(', '));
+	} catch (err) {
+		console.error('[anim] Failed to save animations:', err.message);
+	}
+}
+
+// Initialize animation store from disk
+if (!globalThis.__anim_store) {
+	globalThis.__anim_store = loadAnimations();
 }
 
 export { getMajorityMood };
@@ -86,7 +136,7 @@ function createHandler() {
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
-          <a href="http://localhost:4000" target="_blank" rel="noopener noreferrer" style="background:#111;color:#fff;padding:6px 10px;border-radius:6px;text-decoration:none;border:1px solid #222">Open Frontend</a>
+          <a href="http://localhost:4000" style="background:#111;color:#fff;padding:6px 10px;border-radius:6px;text-decoration:none;border:1px solid #222">Open Frontend</a>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
           <label for="sceneSel">Scene:</label>
@@ -102,7 +152,7 @@ function createHandler() {
           <span id="sceneStatus" style="color:#333;display:inline-block;min-width:120px;height:20px;line-height:20px"></span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
-          <a href="/anim" target="_blank" rel="noopener noreferrer" style="background:#0b5;color:#fff;padding:6px 10px;border-radius:6px;text-decoration:none;border:1px solid #0a4">Open Animation Maker</a>
+          <a href="/anim" style="background:#0b5;color:#fff;padding:6px 10px;border-radius:6px;text-decoration:none;border:1px solid #0a4">Open Animation Maker</a>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
           <button id="voteHappy">Happy :-)</button>
@@ -380,89 +430,380 @@ function createHandler() {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Animation Maker</title>
     <style>
-      body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f7f7f7; margin:0; padding:16px; }
-      .wrap{ display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
-      .tools{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-      .grid{ display:grid; grid-auto-rows:12px; gap:2px; background:#111; padding:6px; }
-      .cell{ width:12px; height:12px; background:#000; border-radius:2px; cursor:pointer; }
+      * { box-sizing: border-box; }
+      body{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background:#2b2b2b; margin:0; padding:0; color:#e0e0e0; overflow:hidden; }
+      
+      /* Top menu bar */
+      .menubar{ background:#1e1e1e; border-bottom:1px solid #000; padding:8px 16px; display:flex; gap:12px; align-items:center; height:40px; }
+      .menubar h1{ margin:0; font-size:13px; font-weight:600; color:#fff; }
+      .menubar-spacer{ flex:1; }
+      .menubar-group{ display:flex; gap:6px; align-items:center; }
+      
+      /* Main workspace */
+      .workspace{ display:flex; height:calc(100vh - 40px); }
+      
+      /* Left vertical toolbar */
+      .left-toolbar{ 
+        background:#1e1e1e; 
+        width:52px; 
+        border-right:1px solid #000; 
+        display:flex; 
+        flex-direction:column; 
+        padding:8px 0;
+        gap:2px;
+      }
+      .tool-group{ 
+        display:flex; 
+        flex-direction:column; 
+        padding:4px 0; 
+        border-bottom:1px solid #333; 
+      }
+      .tool-group:last-child{ border-bottom:none; }
+      
+      /* Side panels */
+      .side-panel{ background:#262626; width:240px; border-right:1px solid #1a1a1a; overflow-y:auto; display:flex; flex-direction:column; }
+      .side-panel.right{ border-right:none; border-left:1px solid #1a1a1a; }
+      
+      /* Center canvas area */
+      .center-panel{ 
+        flex:1; 
+        display:flex; 
+        flex-direction:column; 
+        background:#2b2b2b; 
+        overflow:hidden;
+      }
+      .canvas-area{ 
+        flex:1; 
+        display:flex; 
+        align-items:center; 
+        justify-content:center; 
+        overflow:auto; 
+        padding:20px; 
+      }
+      .timeline-area{ 
+        background:#1e1e1e; 
+        border-top:1px solid #000; 
+        padding:12px 16px; 
+        height:140px;
+        overflow-x:auto;
+        overflow-y:hidden;
+      }
+      
+      /* Panel sections */
+      .panel-section{ padding:16px 12px; border-bottom:1px solid #1a1a1a; }
+      .panel-section h3{ margin:0 0 12px 0; font-size:11px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.5px; }
+      
+      /* Icon buttons (square) */
+      .icon-btn{
+        background:transparent;
+        border:none;
+        color:#b0b0b0;
+        width:36px;
+        height:36px;
+        margin:2px 8px;
+        border-radius:4px;
+        cursor:pointer;
+        font-size:18px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        transition:all 0.1s;
+      }
+      .icon-btn:hover{ background:#3a3a3a; color:#fff; }
+      .icon-btn.active{ background:#0d7acc; color:#fff; }
+      
+      /* Small tool buttons */
+      .tool-btn{ 
+        background:#3a3a3a; 
+        border:1px solid #4a4a4a; 
+        color:#e0e0e0; 
+        padding:6px 10px; 
+        border-radius:3px; 
+        cursor:pointer; 
+        font-size:12px;
+        transition:all 0.1s;
+        white-space:nowrap;
+      }
+      .tool-btn:hover{ background:#4a4a4a; }
+      .tool-btn.active{ background:#0d7acc; border-color:#0d7acc; color:#fff; }
+      .tool-btn.danger{ background:#5a1a1a; border-color:#6a2020; }
+      .tool-btn.danger:hover{ background:#6a2020; }
+      .tool-btn.primary{ background:#0d7acc; border-color:#0d7acc; color:#fff; }
+      .tool-btn.primary:hover{ background:#1583d4; }
+      
+      /* Grid */
+      .grid-container{ background:#1a1a1a; padding:20px; border-radius:4px; box-shadow:0 2px 10px rgba(0,0,0,0.5); }
+      .grid{ display:grid; grid-auto-rows:12px; gap:2px; background:#0a0a0a; padding:8px; border-radius:2px; }
+      .cell{ width:12px; height:12px; background:#1a1a1a; border-radius:50%; cursor:crosshair; transition:background 0.05s; }
+      .cell:hover{ background:#2a2a2a; }
       .cell.on{ background:#fff; }
-      /* Onion skin ghosting */
-      .cell.prev:not(.on){ background:#333; }
+      .cell.prev:not(.on){ background:#444; }
       .cell.next:not(.on){ background:#666; }
-      .timeline{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; }
-      .frameThumb{ display:grid; grid-template-columns: repeat(var(--w), 2px); grid-auto-rows:2px; gap:1px; padding:3px; background:#111; border:1px solid #333; cursor:pointer; }
-      .frameThumb .p{ width:2px; height:2px; background:#000; }
+      
+      /* Timeline */
+      .timeline-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+      .timeline-header h3{ margin:0; font-size:11px; color:#888; text-transform:uppercase; }
+      .timeline-controls{ display:flex; gap:4px; }
+      .timeline{ display:flex; gap:6px; padding:8px 0; }
+      .frameThumb{ 
+        display:grid; 
+        grid-template-columns:repeat(var(--w), 2px); 
+        grid-auto-rows:2px; 
+        gap:1px; 
+        padding:4px; 
+        background:#0a0a0a; 
+        border:2px solid #2a2a2a; 
+        border-radius:2px;
+        cursor:pointer; 
+        transition:all 0.1s;
+        flex-shrink:0;
+      }
+      .frameThumb:hover{ border-color:#4a4a4a; }
+      .frameThumb.active{ border-color:#0d7acc; }
+      .frameThumb .p{ width:2px; height:2px; background:#1a1a1a; }
       .frameThumb .p.on{ background:#fff; }
-      .badge{ font-size:11px; color:#555; }
-      input[type=number]{ width:90px; }
-      button{ padding:6px 10px; }
-      .seg{ display:inline-flex; background:#e8e8e8; border-radius:6px; overflow:hidden; }
-      .seg>button{ padding:6px 10px; border:0; background:transparent; }
-      .seg>button.active{ background:#0b5; color:#fff; }
-      .range{ display:inline-flex; align-items:center; gap:6px; }
-      input[type=range]{ width:120px; }
+      
+      /* Inputs */
+      input[type=text], input[type=number], select{ 
+        background:#1a1a1a; 
+        border:1px solid #3a3a3a; 
+        color:#e0e0e0; 
+        padding:6px 8px; 
+        border-radius:3px; 
+        font-size:12px;
+        width:100%;
+      }
+      input[type=text]:focus, input[type=number]:focus, select:focus{ 
+        outline:none; 
+        border-color:#0d7acc; 
+      }
+      
+      input[type=range]{ 
+        -webkit-appearance:none; 
+        width:100%; 
+        height:3px; 
+        background:#3a3a3a; 
+        border-radius:2px; 
+        outline:none;
+      }
+      input[type=range]::-webkit-slider-thumb{ 
+        -webkit-appearance:none; 
+        width:12px; 
+        height:12px; 
+        background:#0d7acc; 
+        border-radius:50%; 
+        cursor:pointer;
+      }
+      input[type=range]::-moz-range-thumb{ 
+        width:12px; 
+        height:12px; 
+        background:#0d7acc; 
+        border-radius:50%; 
+        cursor:pointer; 
+        border:none;
+      }
+      
+      input[type=checkbox]{ accent-color:#0d7acc; }
+      
+      /* Property row */
+      .prop-row{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
+      .prop-row label{ font-size:11px; color:#888; }
+      .prop-row-inline{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+      .prop-row-inline label{ font-size:11px; color:#888; flex:1; }
+      .prop-value{ font-size:11px; color:#b0b0b0; margin-top:2px; }
+      
+      /* Animation list */
+      .anim-item{ 
+        background:#1a1a1a; 
+        padding:8px 10px; 
+        border-radius:3px; 
+        margin-bottom:6px; 
+        cursor:pointer; 
+        border:1px solid transparent;
+        transition:all 0.1s;
+        font-size:12px;
+      }
+      .anim-item:hover{ background:#2a2a2a; border-color:#3a3a3a; }
+      .anim-item.active{ background:#0d7acc; border-color:#0d7acc; color:#fff; }
+      .anim-preview{ margin-top:6px; display:none; }
+      .anim-item:hover .anim-preview{ display:block; }
+      
+      /* Badges */
+      .badge{ 
+        background:#3a3a3a; 
+        padding:3px 6px; 
+        border-radius:2px; 
+        font-size:10px; 
+        color:#888;
+        display:inline-block;
+      }
+      
+      /* Button groups */
+      .btn-group{ display:flex; gap:4px; }
+      .btn-group .tool-btn{ flex:1; padding:5px 8px; }
+      
+      /* Scrollbar styling */
+      ::-webkit-scrollbar{ width:8px; height:8px; }
+      ::-webkit-scrollbar-track{ background:#1a1a1a; }
+      ::-webkit-scrollbar-thumb{ background:#3a3a3a; border-radius:4px; }
+      ::-webkit-scrollbar-thumb:hover{ background:#4a4a4a; }
     </style>
   </head>
   <body>
-    <h2 style="margin:0 0 10px">Animation Maker</h2>
-    <div class="tools">
-      <span style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap">
-        <label for="animSel">Animation:</label>
-        <select id="animSel"></select>
-        <input id="animName" placeholder="Name" style="padding:4px 6px; width:160px" />
-        <button id="animNew">New</button>
-        <button id="animSaveAs">Save as</button>
-        <button id="animDelete" style="background:#c92a2a;color:white;border:1px solid #a61e1e">🗑️ Delete Animation</button>
-        <button id="animSetActive">Set Active</button>
-      </span>
-      <button id="addFrame">Add Frame</button>
-      <button id="dupFrame">Duplicate</button>
-      <button id="delFrame" style="background:#ff6b6b;color:white;border:1px solid #e63946">🗑️ Delete Frame</button>
-      <label>Duration ms <input id="dur" type="number" min="10" step="10" value="300" /></label>
-      <button id="play">Play</button>
-      <button id="stop">Stop</button>
-      <button id="save">Save</button>
-      <span class="badge" id="sizeBadge"></span>
-      <a href="/view?scene=anim" target="_blank" style="margin-left:auto">Open viewer ▶</a>
-      <span class="range" style="margin-left:8px">
-        <label for="brushSize">Brush</label>
-        <input id="brushSize" type="range" min="1" max="8" value="1" />
-      </span>
-      <span class="seg">
-        <button id="brushCircle" class="active" type="button">Circle</button>
-        <button id="brushSquare" type="button">Square</button>
-        <button id="brushTriangle" type="button">Triangle</button>
-      </span>
-      <span class="seg">
-        <button id="modePaint" class="active" type="button">Paint</button>
-        <button id="modeErase" type="button">Erase</button>
-      </span>
-      <div style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; padding:6px 8px; background:#efe; border-radius:8px; border:1px solid #cfc">
-        <strong style="font-size:12px">Onion</strong>
-        <label>Enable <input id="onionEnable" type="checkbox" /></label>
-        <label>Prev <input id="onionPrev" type="number" min="0" max="2" value="1" style="width:60px; padding:4px 6px" /></label>
-        <label>Next <input id="onionNext" type="number" min="0" max="2" value="0" style="width:60px; padding:4px 6px" /></label>
-      </div>
-      <div style="display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; padding:6px 8px; background:#eef; border-radius:8px; border:1px solid #cde">
-        <strong style="font-size:12px">Text feed (overlay)</strong>
-        <input id="textUrl" placeholder="https://... (text or JSON)" style="padding:4px 6px; width:260px" />
-        <label>Field <input id="textField" placeholder="message" style="padding:4px 6px; width:120px" /></label>
-        <label>Interval <input id="textInt" type="number" min="1000" step="500" value="30000" style="width:110px; padding:4px 6px" /></label>
-        <label>Enable <input id="textEnable" type="checkbox" /></label>
-        <button id="textSave">Save text</button>
+    <!-- Menu Bar -->
+    <div class="menubar">
+      <h1>Animation Maker</h1>
+      <div class="menubar-spacer"></div>
+      <div class="menubar-group">
+        <button class="tool-btn" id="play">▶ Play</button>
+        <button class="tool-btn" id="stop">⏹ Stop</button>
+        <button class="tool-btn primary" id="save">Save</button>
       </div>
     </div>
-    <div class="wrap">
-      <div id="grid" class="grid"></div>
-      <div style="flex:1; min-width:260px">
-        <div class="timeline" id="timeline"></div>
+    
+    <!-- Main Workspace -->
+    <div class="workspace">
+      <!-- Left Vertical Toolbar -->
+      <div class="left-toolbar">
+        <div class="tool-group">
+          <button id="toolBrush" class="icon-btn active" title="Brush Tool (B)">✏️</button>
+          <button id="toolLine" class="icon-btn" title="Line Tool (L)">📏</button>
+          <button id="toolEllipse" class="icon-btn" title="Ellipse Tool (E)">⭕</button>
+          <button id="toolArrow" class="icon-btn" title="Arrow Tool (A)">➡️</button>
+        </div>
+        <div class="tool-group">
+          <button id="modePaint" class="icon-btn active" title="Paint">🎨</button>
+          <button id="modeErase" class="icon-btn" title="Erase">🧹</button>
+        </div>
       </div>
-      <div id="animSidebar" style="min-width:220px; flex:0 0 220px; display:flex; flex-direction:column; gap:8px">
-        <div style="font-weight:600;color:#333">Animations</div>
-        <div id="animList" style="display:flex; flex-direction:column; gap:6px; max-height:60vh; overflow:auto"></div>
+      
+      <!-- Left Panel - Animation & Brush -->
+      <div class="side-panel">
+        <div class="panel-section">
+          <h3>Animation</h3>
+          <div class="prop-row">
+            <select id="animSel"></select>
+          </div>
+          <div class="prop-row">
+            <input id="animName" type="text" placeholder="Animation name" />
+          </div>
+          <div class="btn-group">
+            <button class="tool-btn" id="animNew">New</button>
+            <button class="tool-btn primary" id="animSetActive">Set Active</button>
+          </div>
+          <div class="btn-group" style="margin-top:4px;">
+            <button class="tool-btn" id="animSaveAs">Save As</button>
+            <button class="tool-btn danger" id="animDelete">Delete</button>
+          </div>
+        </div>
+        
+        <div class="panel-section">
+          <h3>Brush</h3>
+          <div class="prop-row">
+            <label>Size</label>
+            <input id="brushSize" type="range" min="1" max="8" value="1" />
+          </div>
+          <div class="prop-row">
+            <label>Shape</label>
+            <div class="btn-group">
+              <button id="brushCircle" class="tool-btn active">●</button>
+              <button id="brushSquare" class="tool-btn">■</button>
+              <button id="brushTriangle" class="tool-btn">▲</button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="panel-section">
+          <h3>Animations</h3>
+          <div id="animList"></div>
+        </div>
+      </div>
+      
+      <!-- Center Panel - Canvas & Timeline -->
+      <div class="center-panel">
+        <div class="canvas-area">
+          <div class="grid-container">
+            <div id="grid" class="grid"></div>
+          </div>
+        </div>
+        
+        <div class="timeline-area">
+          <div class="timeline-header">
+            <h3>Timeline</h3>
+            <div class="timeline-controls">
+              <button class="tool-btn" id="addFrame">+ Add Frame</button>
+              <button class="tool-btn" id="dupFrame">Duplicate</button>
+              <button class="tool-btn danger" id="delFrame">Delete</button>
+              <span class="badge" id="sizeBadge" style="margin-left:8px;">84×28</span>
+            </div>
+          </div>
+          <div class="timeline" id="timeline"></div>
+        </div>
+      </div>
+      
+      <!-- Right Panel - Properties -->
+      <div class="side-panel right">
+        <div class="panel-section">
+          <h3>Frame</h3>
+          <div class="prop-row">
+            <label>Duration (ms)</label>
+            <input id="dur" type="range" min="10" max="2000" step="10" value="300" />
+            <span id="durVal" class="prop-value">300 ms</span>
+          </div>
+        </div>
+        
+        <div class="panel-section">
+          <h3>Onion Skin</h3>
+          <div class="prop-row-inline">
+            <label>Enable</label>
+            <input id="onionEnable" type="checkbox" />
+          </div>
+          <div class="prop-row">
+            <label>Previous Frames</label>
+            <input id="onionPrev" type="number" min="0" max="2" value="1" />
+          </div>
+          <div class="prop-row">
+            <label>Next Frames</label>
+            <input id="onionNext" type="number" min="0" max="2" value="0" />
+          </div>
+        </div>
+        
+        <div class="panel-section">
+          <h3>Text Overlay</h3>
+          <div class="prop-row-inline">
+            <label>Enable</label>
+            <input id="textEnable" type="checkbox" />
+          </div>
+          <div class="prop-row">
+            <label>API URL</label>
+            <input id="textUrl" type="text" placeholder="https://..." />
+          </div>
+          <div class="prop-row">
+            <label>JSON Field</label>
+            <input id="textField" type="text" placeholder="message" />
+          </div>
+          <div class="prop-row">
+            <label>Interval (ms)</label>
+            <input id="textInt" type="number" min="1000" step="500" value="30000" />
+          </div>
+          <button class="tool-btn primary" id="textSave" style="width:100%; margin-top:4px;">Save Config</button>
+        </div>
       </div>
     </div>
+    
     <script>
+      // Confirmation dialog only for deleting animations
+      setTimeout(() => {
+        const delAnimBtn = document.getElementById('animDelete');
+        if (delAnimBtn) {
+          const orig = delAnimBtn.onclick;
+          delAnimBtn.onclick = function() {
+            if (confirm('Delete this animation?')) {
+              orig && orig();
+            }
+          };
+        }
+      }, 400);
       let W = 84, H = 28;
       async function getLiveSize(){ try{ const r = await fetch('/frame.bits'); const j = await r.json(); if (j && j.w && j.h){ W=j.w; H=j.h; } }catch{} }
       const grid = document.getElementById('grid');
@@ -493,6 +834,10 @@ function createHandler() {
       let brushSize = 1; // radius in pixels
       let brushMode = 'paint'; // 'paint' | 'erase'
       let brushShape = 'circle'; // 'circle' | 'square' | 'triangle'
+      let activeTool = 'brush'; // 'brush' | 'line' | 'ellipse' | 'arrow'
+      let lastMouseIndex = -1; // for continuous brush strokes
+      let shapeStartIndex = -1; // for shape tools (line, ellipse, arrow)
+      let shapePreview = null; // temporary preview for shape tools
       let currentName = '';
       let textMeta = { enable:false, url:'', field:'', intervalMs:30000 };
       let onionEnabled = false;
@@ -500,6 +845,73 @@ function createHandler() {
       let onionNext = 0;
       function bitsOf(arr){ return arr.map(v=>v?'1':'0').join(''); }
       function arrOf(bits){ const arr = new Array(W*H).fill(false); for(let i=0;i<arr.length && i<bits.length;i++){ arr[i] = bits.charAt(i)==='1'; } return arr; }
+      
+      // Bresenham's line algorithm for continuous brush strokes
+      function bresenhamLine(x0, y0, x1, y1) {
+        const points = [];
+        const dx = Math.abs(x1 - x0);
+        const dy = Math.abs(y1 - y0);
+        const sx = x0 < x1 ? 1 : -1;
+        const sy = y0 < y1 ? 1 : -1;
+        let err = dx - dy;
+        let x = x0, y = y0;
+        while (true) {
+          points.push(y * W + x);
+          if (x === x1 && y === y1) break;
+          const e2 = 2 * err;
+          if (e2 > -dy) { err -= dy; x += sx; }
+          if (e2 < dx) { err += dx; y += sy; }
+        }
+        return points;
+      }
+      
+      // Draw ellipse using midpoint algorithm
+      function drawEllipse(cx, cy, rx, ry) {
+        const points = [];
+        // Handle degenerate cases
+        if (rx === 0 && ry === 0) return [cy * W + cx];
+        if (rx === 0) {
+          for (let y = -ry; y <= ry; y++) {
+            const py = cy + y;
+            if (py >= 0 && py < H) points.push(py * W + cx);
+          }
+          return points;
+        }
+        if (ry === 0) {
+          for (let x = -rx; x <= rx; x++) {
+            const px = cx + x;
+            if (px >= 0 && px < W) points.push(cy * W + px);
+          }
+          return points;
+        }
+        // Midpoint ellipse algorithm
+        let x = 0, y = ry;
+        let rx2 = rx * rx, ry2 = ry * ry;
+        let px = 0, py = 2 * rx2 * y;
+        const plot = (xp, yp) => {
+          if (xp >= 0 && xp < W && yp >= 0 && yp < H) points.push(yp * W + xp);
+        };
+        // Region 1
+        let p = Math.round(ry2 - (rx2 * ry) + (0.25 * rx2));
+        while (px < py) {
+          x++; px += 2 * ry2;
+          if (p < 0) { p += ry2 + px; }
+          else { y--; py -= 2 * rx2; p += ry2 + px - py; }
+          plot(cx + x, cy + y); plot(cx - x, cy + y);
+          plot(cx + x, cy - y); plot(cx - x, cy - y);
+        }
+        // Region 2
+        p = Math.round(ry2 * (x + 0.5) * (x + 0.5) + rx2 * (y - 1) * (y - 1) - rx2 * ry2);
+        while (y >= 0) {
+          y--; py -= 2 * rx2;
+          if (p > 0) { p += rx2 - py; }
+          else { x++; px += 2 * ry2; p += rx2 - py + px; }
+          plot(cx + x, cy + y); plot(cx - x, cy + y);
+          plot(cx + x, cy - y); plot(cx - x, cy - y);
+        }
+        return points;
+      }
+      
       function applyBrushAt(index){
         const arr = frames[idx]?.arr || new Array(W*H).fill(false);
         const cx = index % W;
@@ -530,19 +942,144 @@ function createHandler() {
           }
         }
       }
+      
+      // Apply brush along a line (for continuous strokes)
+      function applyBrushLine(fromIndex, toIndex) {
+        const x0 = fromIndex % W;
+        const y0 = Math.floor(fromIndex / W);
+        const x1 = toIndex % W;
+        const y1 = Math.floor(toIndex / W);
+        const line = bresenhamLine(x0, y0, x1, y1);
+        for (const idx of line) applyBrushAt(idx);
+      }
+      
+      // Draw shape (line, ellipse, arrow) from start to current index
+      function drawShape(startIndex, endIndex, toolType, temporary = false) {
+        const x0 = startIndex % W;
+        const y0 = Math.floor(startIndex / W);
+        const x1 = endIndex % W;
+        const y1 = Math.floor(endIndex / W);
+        let points = [];
+        
+        if (toolType === 'line') {
+          points = bresenhamLine(x0, y0, x1, y1);
+        } else if (toolType === 'ellipse') {
+          const cx = Math.floor((x0 + x1) / 2);
+          const cy = Math.floor((y0 + y1) / 2);
+          const rx = Math.abs(x1 - x0) / 2;
+          const ry = Math.abs(y1 - y0) / 2;
+          points = drawEllipse(cx, cy, Math.round(rx), Math.round(ry));
+        } else if (toolType === 'arrow') {
+          // Arrow: line + arrowhead
+          const line = bresenhamLine(x0, y0, x1, y1);
+          points.push(...line);
+          // Arrowhead (simple triangle at end)
+          const dx = x1 - x0;
+          const dy = y1 - y0;
+          const len = Math.sqrt(dx*dx + dy*dy);
+          if (len > 3) {
+            const ndx = dx / len;
+            const ndy = dy / len;
+            const arrowSize = Math.min(5, len / 3);
+            // Perpendicular vector
+            const px = -ndy;
+            const py = ndx;
+            // Two points for arrowhead
+            const ax1 = Math.round(x1 - ndx * arrowSize + px * arrowSize * 0.5);
+            const ay1 = Math.round(y1 - ndy * arrowSize + py * arrowSize * 0.5);
+            const ax2 = Math.round(x1 - ndx * arrowSize - px * arrowSize * 0.5);
+            const ay2 = Math.round(y1 - ndy * arrowSize - py * arrowSize * 0.5);
+            points.push(...bresenhamLine(x1, y1, ax1, ay1));
+            points.push(...bresenhamLine(x1, y1, ax2, ay2));
+          }
+        }
+        
+        if (temporary) {
+          // Preview only (don't modify actual array)
+          return points;
+        } else {
+          // Commit to array
+          const arr = frames[idx]?.arr || new Array(W*H).fill(false);
+          for (const pi of points) {
+            if (pi >= 0 && pi < arr.length) {
+              arr[pi] = (brushMode === 'paint');
+              const el = grid.children[pi];
+              if (el) el.classList.toggle('on', arr[pi]);
+            }
+          }
+        }
+      }
       function renderGrid(){
         grid.style.gridTemplateColumns = 'repeat(' + W + ',12px)';
         grid.innerHTML = '';
         const arr = frames[idx]?.arr || new Array(W*H).fill(false);
         for(let i=0;i<W*H;i++){
           const d = document.createElement('div'); d.className = 'cell' + (arr[i]?' on':''); d.dataset.idx = String(i);
-          d.onmousedown = (e)=>{ e.preventDefault(); isMouseDown = true; applyBrushAt(i); };
-          d.onmouseover = (e)=>{ if (isMouseDown){ applyBrushAt(i); } };
+          d.onmousedown = (e)=>{ 
+            e.preventDefault(); 
+            isMouseDown = true; 
+            if (activeTool === 'brush') {
+              applyBrushAt(i); 
+              lastMouseIndex = i;
+            } else {
+              // Shape tools: start shape drawing
+              shapeStartIndex = i;
+              shapePreview = null;
+            }
+          };
+          d.onmouseover = (e)=>{ 
+            if (!isMouseDown) return;
+            if (activeTool === 'brush') {
+              // Continuous brush with interpolation
+              if (lastMouseIndex >= 0 && lastMouseIndex !== i) {
+                applyBrushLine(lastMouseIndex, i);
+              } else {
+                applyBrushAt(i);
+              }
+              lastMouseIndex = i;
+            } else {
+              // Shape tools: preview shape
+              if (shapeStartIndex >= 0) {
+                // Clear previous preview
+                if (shapePreview) {
+                  for (const pi of shapePreview) {
+                    if (pi >= 0 && pi < grid.children.length) {
+                      const el = grid.children[pi];
+                      const actual = arr[pi];
+                      if (el) el.classList.toggle('on', actual);
+                    }
+                  }
+                }
+                // Draw new preview
+                shapePreview = drawShape(shapeStartIndex, i, activeTool, true);
+                for (const pi of shapePreview) {
+                  if (pi >= 0 && pi < grid.children.length) {
+                    const el = grid.children[pi];
+                    if (el) el.classList.toggle('on', brushMode === 'paint');
+                  }
+                }
+              }
+            }
+          };
+          d.onmouseup = (e)=>{ 
+            if (isMouseDown && activeTool !== 'brush' && shapeStartIndex >= 0) {
+              // Commit shape to array
+              drawShape(shapeStartIndex, i, activeTool, false);
+              shapePreview = null;
+              shapeStartIndex = -1;
+            }
+          };
           grid.appendChild(d);
         }
         sizeBadge.textContent = W + '×' + H;
         updateOnionSkins();
       }
+      window.addEventListener('mouseup', ()=>{ 
+        isMouseDown = false; 
+        lastMouseIndex = -1;
+        shapeStartIndex = -1;
+        shapePreview = null;
+      });
       function updateOnionSkins(){
         if (!grid) return;
         if (!onionEnabled){
@@ -574,14 +1111,16 @@ function createHandler() {
       function renderTimeline(){
         tl.innerHTML='';
         frames.forEach((f, i)=>{
-          const t = document.createElement('div'); t.className='frameThumb'; t.style.setProperty('--w', String(W)); t.title = f.dur + 'ms';
+          const t = document.createElement('div'); 
+          t.className = 'frameThumb' + (i===idx ? ' active' : ''); 
+          t.style.setProperty('--w', String(W)); 
+          t.title = 'Frame ' + (i+1) + ' • ' + f.dur + 'ms';
           for(let y=0;y<H;y++){
             for(let x=0;x<W;x++){
               const p = document.createElement('div'); p.className='p' + (f.arr[y*W+x]?' on':''); t.appendChild(p);
             }
           }
-          t.style.outline = i===idx ? '2px solid #0af' : '2px solid transparent';
-          t.onclick = ()=>{ idx=i; durEl.value = String(frames[idx].dur); renderTimeline(); renderGrid(); };
+          t.onclick = ()=>{ idx=i; durEl.value = String(frames[idx].dur); document.getElementById('durVal').textContent = frames[idx].dur + ' ms'; renderTimeline(); renderGrid(); };
           tl.appendChild(t);
         });
       }
@@ -641,21 +1180,13 @@ function createHandler() {
           animListEl.innerHTML = '';
           j.items.forEach(name => {
             const item = document.createElement('div');
-            item.style.display = 'flex';
-            item.style.alignItems = 'center';
-            item.style.justifyContent = 'space-between';
-            item.style.gap = '8px';
-            item.style.padding = '6px 8px';
-            item.style.border = '1px solid ' + (name===j.active ? '#0a4' : '#ddd');
-            item.style.borderRadius = '6px';
-            item.style.background = name===j.active ? '#eaffea' : '#fff';
-            item.style.cursor = 'pointer';
+            item.className = 'anim-item' + (name===j.active ? ' active' : '');
             const label = document.createElement('div');
             label.textContent = name;
-            label.style.flex = '1';
             label.style.fontSize = '13px';
+            label.style.fontWeight = '500';
             const previewWrap = document.createElement('div');
-            previewWrap.style.marginLeft = '6px';
+            previewWrap.className = 'anim-preview';
             const meta = { playing: false, timer: 0, frames: [], w: 0, h: 0, preview: null };
             item.addEventListener('mouseenter', async ()=>{
               if (meta.preview) return; // already built
@@ -681,7 +1212,7 @@ function createHandler() {
               previewWrap.innerHTML = '';
               meta.preview = null;
             });
-            item.addEventListener('click', async ()=>{ animSel.value = name; animNameInput.value = name; await loadState(name); });
+            item.addEventListener('click', async ()=>{ animSel.value = name; animNameInput.value = name; await loadState(name); await refreshAnimList(); });
             item.appendChild(label);
             item.appendChild(previewWrap);
             animListEl.appendChild(item);
@@ -696,11 +1227,36 @@ function createHandler() {
       (async function init(){ await getLiveSize(); await refreshAnimList(); await loadState(); })();
       // Save on unload to persist quick edits
       window.addEventListener('beforeunload', ()=>{ try{ const n = String(animSel && animSel.value || ''); navigator.sendBeacon('/anim/state' + (n?('?name='+encodeURIComponent(n)):'') , new Blob([JSON.stringify({ w:W, h:H, frames: frames.map(f=>({ bits: bitsOf(f.arr), durationMs: f.dur })), text: { enable: !!textEnableEl.checked, url: String(textUrlEl.value||'').trim(), field: String(textFieldEl.value||'').trim(), intervalMs: Math.max(1000, Number(textIntEl.value)||30000) } })], { type:'application/json' })); }catch{} });
+      
+      // Duration slider display
+      durEl.addEventListener('input', ()=>{ 
+        const v = Math.max(10, Number(durEl.value)||300); 
+        frames[idx].dur = v; 
+        document.getElementById('durVal').textContent = v + ' ms';
+        renderTimeline(); 
+      });
+      
+      // Drawing Tools UI
+      const toolBrushBtn = document.getElementById('toolBrush');
+      const toolLineBtn = document.getElementById('toolLine');
+      const toolEllipseBtn = document.getElementById('toolEllipse');
+      const toolArrowBtn = document.getElementById('toolArrow');
+      function setTool(tool){ 
+        activeTool = tool; 
+        toolBrushBtn.classList.toggle('active', tool==='brush'); 
+        toolLineBtn.classList.toggle('active', tool==='line'); 
+        toolEllipseBtn.classList.toggle('active', tool==='ellipse'); 
+        toolArrowBtn.classList.toggle('active', tool==='arrow'); 
+      }
+      toolBrushBtn.addEventListener('click', ()=> setTool('brush'));
+      toolLineBtn.addEventListener('click', ()=> setTool('line'));
+      toolEllipseBtn.addEventListener('click', ()=> setTool('ellipse'));
+      toolArrowBtn.addEventListener('click', ()=> setTool('arrow'));
+      
       // Brush UI
       brushSizeEl.addEventListener('input', ()=>{ brushSize = Math.max(1, Number(brushSizeEl.value)||1); });
       modePaintBtn.addEventListener('click', ()=>{ brushMode = 'paint'; modePaintBtn.classList.add('active'); modeEraseBtn.classList.remove('active'); });
       modeEraseBtn.addEventListener('click', ()=>{ brushMode = 'erase'; modeEraseBtn.classList.add('active'); modePaintBtn.classList.remove('active'); });
-      window.addEventListener('mouseup', ()=>{ isMouseDown = false; });
       // Brush shape UI
       function setShape(shape){ brushShape = shape; brushCircleBtn.classList.toggle('active', shape==='circle'); brushSquareBtn.classList.toggle('active', shape==='square'); brushTriangleBtn.classList.toggle('active', shape==='triangle'); }
       brushCircleBtn.addEventListener('click', ()=> setShape('circle'));
@@ -734,6 +1290,7 @@ function createHandler() {
 						const frames = Array.isArray(data.frames) ? data.frames.map(f=>({ bits: String(f.bits||''), durationMs: Math.max(10, Number(f.durationMs)||300) })) : [];
 						const text = data && data.text ? { enable: !!data.text.enable, url: String(data.text.url||'').trim(), field: String(data.text.field||'').trim(), intervalMs: Math.max(1000, Number(data.text.intervalMs)||30000) } : { enable:false, url:'', field:'', intervalMs:30000 };
 						store.items[name] = { w, h, frames, text };
+						saveAnimations(store); // 💾 Save to disk
 						res.writeHead(200, { "Content-Type": "application/json" });
 						res.end(JSON.stringify({ ok:true, name }));
 					} catch {
@@ -811,7 +1368,16 @@ function createHandler() {
 			let body = '';
 			req.on('data', c => body += c);
 			req.on('end', () => {
-				try{ const { name } = JSON.parse(body||'{}'); const n = String(name||'').trim(); if (!n) throw new Error('bad'); if (!store.items[n]) store.items[n] = { w:84, h:28, frames: [] }; store.active = n; res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok:true, active: n })); }
+				try{ 
+					const { name } = JSON.parse(body||'{}'); 
+					const n = String(name||'').trim(); 
+					if (!n) throw new Error('bad'); 
+					if (!store.items[n]) store.items[n] = { w:84, h:28, frames: [], text: { enable:false, url:'', field:'', intervalMs:30000 } }; 
+					store.active = n; 
+					saveAnimations(store); // 💾 Save to disk
+					res.writeHead(200, { "Content-Type": "application/json" }); 
+					res.end(JSON.stringify({ ok:true, active: n })); 
+				}
 				catch { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok:false })); }
 			});
 		} else if (parsed.pathname === "/anim/delete" && req.method === 'POST') {
@@ -820,7 +1386,18 @@ function createHandler() {
 			let body = '';
 			req.on('data', c => body += c);
 			req.on('end', () => {
-				try{ const { name } = JSON.parse(body||'{}'); const n = String(name||'').trim(); if (!n || !store.items[n]) throw new Error('bad'); delete store.items[n]; const keys = Object.keys(store.items); if (!keys.length) store.items['default'] = { w:84, h:28, frames: [] }; if (store.active === n) store.active = keys[0] || 'default'; res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok:true, active: store.active })); }
+				try{ 
+					const { name } = JSON.parse(body||'{}'); 
+					const n = String(name||'').trim(); 
+					if (!n || !store.items[n]) throw new Error('bad'); 
+					delete store.items[n]; 
+					const keys = Object.keys(store.items); 
+					if (!keys.length) store.items['default'] = { w:84, h:28, frames: [], text: { enable:false, url:'', field:'', intervalMs:30000 } }; 
+					if (store.active === n) store.active = keys[0] || 'default'; 
+					saveAnimations(store); // 💾 Save to disk
+					res.writeHead(200, { "Content-Type": "application/json" }); 
+					res.end(JSON.stringify({ ok:true, active: store.active })); 
+				}
 				catch { res.writeHead(400, { "Content-Type": "application/json" }); res.end(JSON.stringify({ ok:false })); }
 			});
 		} else if (parsed.pathname === "/ski") {
