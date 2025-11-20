@@ -15,6 +15,7 @@ export const animations = {
     metadata: textScrollMetadata,
   },
   pong: { renderer: pongAnimation, metadata: pongMetadata },
+
 };
 
 export type AnimationId = keyof typeof animations;

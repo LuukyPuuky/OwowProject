@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 interface PixelDisplayProps {
-  size?: "small" | "large";
+  size?: "small" | "large" | "mini";
   autoRefresh?: boolean;
   animationType?: string;
   renderer?: (
@@ -26,6 +26,7 @@ export function PixelDisplay({
   const sizeMap = {
     small: 2,
     large: 6,
+    mini: 1,
   };
   const scale = sizeMap[size];
   const width = 80;

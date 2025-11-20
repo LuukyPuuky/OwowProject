@@ -186,7 +186,13 @@ export function Sidebar({
                         className="flex items-center justify-between border-2 p-4 rounded-xl hover:bg-accent/10 transition-colors"
                       >
                         <div className="flex items-center gap-2">
-                          <div className="bg-black pt-3 pb-3 pl-5 pr-5" />
+                          <div className="rounded overflow-hidden">
+                            <PixelDisplay
+                              size="mini"
+                              animationType={anim.id}
+                              autoRefresh={true}
+                            />
+                          </div>
                           <p>{anim.name}</p>
                         </div>
                         <button
