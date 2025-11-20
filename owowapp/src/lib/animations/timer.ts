@@ -2,7 +2,7 @@ import type { AnimationRenderer } from ".././display/types";
 
 export const timerMetadata = {
   id: "timer",
-  name: "Timer animation",
+  name: "Timer",
   description: "Displays elapsed time in seconds",
   status: "Available" as const,
 };

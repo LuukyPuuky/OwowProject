@@ -2,9 +2,9 @@ import type { AnimationRenderer } from ".././display/types";
 
 export const starBounceMetadata = {
   id: "1",
-  name: "Star animation",
+  name: "Star",
   description: "Displays a star that moves in different directions",
-  status: "Equiped" as const,
+  status: "Available" as const,
 };
 
 interface StarState {

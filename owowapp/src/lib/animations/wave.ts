@@ -2,7 +2,7 @@ import type { AnimationRenderer } from ".././display/types";
 
 export const waveMetadata = {
   id: "wave",
-  name: "Wave animation",
+  name: "Wave",
   description: "A sine wave that moves across the screen",
   thumbnail: "/api/thumbnail/wave",
   status: "Available" as const,

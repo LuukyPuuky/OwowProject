@@ -18,17 +18,26 @@ interface PixelDisplayProps {
 export function PixelDisplay({
   size = "small",
   autoRefresh = true,
-  animationType = "1",
+  animationType,
 }: PixelDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const scale = size === "large" ? 4 : 2;
   const width = 80;
   const height = 20;
 
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!autoRefresh || !animationType) {
+      // Clear canvas if no animation
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      }
+      return;
+    }
 
     const controller = new AbortController();
     let isMounted = true;
@@ -36,9 +45,8 @@ export function PixelDisplay({
     const startStream = async () => {
       try {
         setIsLoading(true);
-        const safeAnimationType = animationType || "star-bounce";
         const response = await fetch(
-          `/api/stream?animationType=${safeAnimationType}`,
+          `/api/stream?animationType=${animationType}`,
           {
             signal: controller.signal,
           }

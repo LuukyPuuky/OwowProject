@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   // 80x20 is the standard size for now
   const width = 80;
   const height = 20;
-  const fps = 30; // Lower FPS for streaming to save bandwidth/CPU
+  const fps = 30;
   const displayManager = new DisplayManager({ width, height, fps });
   displayManager.setRenderer(animation.renderer);
 

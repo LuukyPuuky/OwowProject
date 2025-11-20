@@ -2,7 +2,7 @@ import type { AnimationRenderer } from ".././display/types";
 
 export const logoMetadata = {
   id: "logo",
-  name: "Logo animation",
+  name: "Logo",
   description: "Displays the OWOW logo",
   status: "Available" as const,
 };

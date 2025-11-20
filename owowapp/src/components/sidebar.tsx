@@ -41,21 +41,20 @@ export function Sidebar({
   const favoriteAnimations =
     favorites && favorites.size > 0
       ? Array.from(favorites)
-          .map((id) => {
-            const animObj = Object.values(animations).find(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (a: any) => a.metadata?.id === id
-            );
-            return animObj?.metadata;
-          })
-          .filter((anim) => anim !== undefined)
+        .map((id) => {
+          const animObj = Object.values(animations).find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (a: any) => a.metadata?.id === id
+          );
+          return animObj?.metadata;
+        })
+        .filter((anim) => anim !== undefined)
       : [];
 
   return (
     <aside
-      className={`${
-        isCollapsed ? "w-20" : "w-[400px]"
-      } flex flex-col transition-all duration-300`}
+      className={`${isCollapsed ? "w-20" : "w-[400px]"
+        } flex flex-col transition-all duration-300`}
       style={{ backgroundColor: "#1f1f1f" }}
     >
       {/* Logo */}
@@ -137,17 +136,17 @@ export function Sidebar({
                 <div className="aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
                   <PixelDisplay
                     size="large"
-                    animationType={equippedAnimation?.id || "star-bounce"}
+                    animationType={equippedAnimation?.id}
                   />
                 </div>
 
                 <div className="border-3 border-border rounded-lg p-4 space-y-2">
                   <h3 className="font-medium text-muted-foreground">
-                    {equippedAnimation?.name || "Star animation"}
+                    {equippedAnimation?.name || "No animation selected"}
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {equippedAnimation?.description ||
-                      "Displays a star that moves in different directions"}
+                      "Select an animation from your favorites to preview it here."}
                   </p>
                 </div>
               </div>
@@ -206,7 +205,9 @@ export function Sidebar({
 
           {/* Currently Section */}
           <div className="px-6 pb-6 border-t border-border pt-6">
-            <p className="text-sm text-muted-foreground">Currently: .....</p>
+            <p className="text-sm text-muted-foreground">
+              Currently: {equippedAnimation?.name || "None"}
+            </p>
           </div>
         </div>
       )}
