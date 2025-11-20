@@ -23,7 +23,11 @@ export function PixelDisplay({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const scale = size === "large" ? 4 : 2;
+  const sizeMap = {
+    small: 2,
+    large: 6,
+  };
+  const scale = sizeMap[size];
   const width = 80;
   const height = 20;
 
@@ -120,7 +124,11 @@ export function PixelDisplay({
   return (
     <div
       className="flex items-center justify-center bg-black rounded-lg overflow-hidden"
-      style={{ width: width * scale, height: height * scale }}
+      style={{
+        width: "100%",
+        maxWidth: width * scale,
+        aspectRatio: `${width}/${height}`,
+      }}
     >
       {isLoading && (
         <div className="absolute flex flex-col items-center justify-center gap-2 text-muted-foreground z-10">
@@ -132,8 +140,8 @@ export function PixelDisplay({
         width={width}
         height={height}
         style={{
-          width: width * scale,
-          height: height * scale,
+          width: "100%",
+          height: "100%",
           imageRendering: "pixelated",
           opacity: isLoading ? 0 : 1,
           transition: "opacity 0.2s",
