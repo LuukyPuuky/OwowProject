@@ -42,11 +42,11 @@ export function Sidebar({
     favorites && favorites.size > 0
       ? Array.from(favorites)
           .map((id) => {
-            const animObj = Object.values(animations).find(
+            const animationObject = Object.values(animations).find(
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (a: any) => a.metadata?.id === id
             );
-            return animObj?.metadata;
+            return animationObject?.metadata;
           })
           .filter((anim) => anim !== undefined)
           .filter((anim) =>
