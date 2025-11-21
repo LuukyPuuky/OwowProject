@@ -92,7 +92,7 @@ export function AnimationCard({
 
         <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
           <PixelDisplay
-            size="small"
+            size="large"
             animationType={animationType || id || "1"}
             autoRefresh={true}
           />

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 interface PixelDisplayProps {
-  size?: "small" | "large";
+  size?: "small" | "large" | "mini";
   autoRefresh?: boolean;
   animationType?: string;
   renderer?: (
@@ -18,17 +18,31 @@ interface PixelDisplayProps {
 export function PixelDisplay({
   size = "small",
   autoRefresh = true,
-  animationType = "1",
+  animationType,
 }: PixelDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const scale = size === "large" ? 4 : 2;
+  const sizeMap = {
+    small: 2,
+    large: 6,
+    mini: 1,
+  };
+  const scale = sizeMap[size];
   const width = 80;
   const height = 20;
 
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!autoRefresh || !animationType) {
+      // Clear canvas if no animation
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      }
+      return;
+    }
 
     const controller = new AbortController();
     let isMounted = true;
@@ -36,9 +50,8 @@ export function PixelDisplay({
     const startStream = async () => {
       try {
         setIsLoading(true);
-        const safeAnimationType = animationType || "star-bounce";
         const response = await fetch(
-          `/api/stream?animationType=${safeAnimationType}`,
+          `/api/stream?animationType=${animationType}`,
           {
             signal: controller.signal,
           }
@@ -112,7 +125,11 @@ export function PixelDisplay({
   return (
     <div
       className="flex items-center justify-center bg-black rounded-lg overflow-hidden"
-      style={{ width: width * scale, height: height * scale }}
+      style={{
+        width: "100%",
+        maxWidth: width * scale,
+        aspectRatio: `${width}/${height}`,
+      }}
     >
       {isLoading && (
         <div className="absolute flex flex-col items-center justify-center gap-2 text-muted-foreground z-10">
@@ -124,8 +141,8 @@ export function PixelDisplay({
         width={width}
         height={height}
         style={{
-          width: width * scale,
-          height: height * scale,
+          width: "100%",
+          height: "100%",
           imageRendering: "pixelated",
           opacity: isLoading ? 0 : 1,
           transition: "opacity 0.2s",

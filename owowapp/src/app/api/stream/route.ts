@@ -4,7 +4,7 @@ import { DisplayManager } from "@/lib/display/display-manager";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const animationType = searchParams.get("animationType") || "star-bounce";
+  const animationType = searchParams.get("animationType") || "logo";
 
   // Get the animation renderer
   const animationKey = animationType as keyof typeof animations;
@@ -15,10 +15,10 @@ export async function GET(request: NextRequest) {
   }
 
   // Create a new DisplayManager for this stream
-  // 80x20 is the standard size for now
+  // 80x20 is the standard size
   const width = 80;
   const height = 20;
-  const fps = 30; // Lower FPS for streaming to save bandwidth/CPU
+  const fps = 15;
   const displayManager = new DisplayManager({ width, height, fps });
   displayManager.setRenderer(animation.renderer);
 

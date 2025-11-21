@@ -11,7 +11,7 @@ export function AnimationLibrary() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
-  const [equippedId, setEquippedId] = useState<string>("star-bounce");
+  const [equippedId, setEquippedId] = useState<string>("logo");
 
   useEffect(() => {
     const startDefaultAnimation = async () => {
