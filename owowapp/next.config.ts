@@ -1,7 +1,11 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true,
+import type { NextConfig } from "next";
+import path from "path";
 
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  turbopack: {
+    root: path.resolve(__dirname, ".."),
+  },
   images: {
     localPatterns: [
       {
@@ -12,4 +16,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

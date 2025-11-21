@@ -8,14 +8,15 @@ export const logoMetadata = {
 };
 
 export const logoAnimation: AnimationRenderer = (ctx, frame, config) => {
-  const { width } = config;
+  const { width, height } = config;
   const text = "OWOW";
 
   if (!ctx) return;
 
   ctx.fillStyle = "#fff";
   ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
 
-  const metrics = ctx.measureText(text);
-  ctx.fillText(text, width - metrics.width - 2, 2);
+  ctx.fillText(text, width / 2, height / 2);
 };
