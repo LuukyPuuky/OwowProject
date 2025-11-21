@@ -41,28 +41,30 @@ export function Sidebar({
   const favoriteAnimations =
     favorites && favorites.size > 0
       ? Array.from(favorites)
-        .map((id) => {
-          const animObj = Object.values(animations).find(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (a: any) => a.metadata?.id === id
-          );
-          return animObj?.metadata;
-        })
-        .filter((anim) => anim !== undefined)
+          .map((id) => {
+            const animObj = Object.values(animations).find(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (a: any) => a.metadata?.id === id
+            );
+            return animObj?.metadata;
+          })
+          .filter((anim) => anim !== undefined)
+          .filter((anim) =>
+            anim.name.toLowerCase().includes(searchQuery.toLowerCase())
+          )
       : [];
 
   return (
     <aside
-      className={`${isCollapsed ? "w-20" : "w-[400px]"
-        } flex flex-col transition-all duration-300`}
+      className={`${
+        isCollapsed ? "w-20" : "w-[400px]"
+      } flex flex-col transition-all duration-300`}
       style={{ backgroundColor: "#1f1f1f" }}
     >
       {/* Logo */}
       <div className="p-6">
         {isCollapsed ? (
-          <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center">
-            <span className="text-muted-foreground font-medium text-sm">L</span>
-          </div>
+          <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center"></div>
         ) : (
           <div className="px-4 py-3 bg-secondary rounded-lg">
             <span className="text-muted-foreground font-medium">Logo</span>
@@ -77,11 +79,19 @@ export function Sidebar({
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search ..."
+              placeholder="Search"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 border-2 border-border text-foreground placeholder:text-muted-foreground !bg-[#1f1f1f] focus:outline-none focus:ring-0 focus:border-border"
+              className="pl-10 pr-10 border-2 border-border text-white placeholder:text-muted-foreground !bg-[#1f1f1f] focus:outline-none focus:ring-0 focus:border-border"
             />
+            {searchQuery && (
+              <button
+                onClick={() => onSearchChange("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
       )}
