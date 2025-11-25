@@ -1,7 +1,8 @@
-import React from "react";
+"use client";
+import React, { useState } from "react";
 import { PixelWeatherCard, PixelWeatherData } from "@/components/PixelWeatherCard";
 
-const mockWeather: PixelWeatherData[] = [
+const initialWeather: PixelWeatherData[] = [
   { city: "Amsterdam", temp: 17, condition: "sun" },
   { city: "London", temp: 12, condition: "cloud" },
   { city: "Seattle", temp: 8, condition: "rain" },
@@ -9,6 +10,12 @@ const mockWeather: PixelWeatherData[] = [
 ];
 
 export default function PixelWeatherPreview() {
+  const [weather, setWeather] = useState<PixelWeatherData[]>(initialWeather);
+
+  const handleChange = (idx: number, newData: PixelWeatherData) => {
+    setWeather((prev) => prev.map((w, i) => (i === idx ? newData : w)));
+  };
+
   return (
     <div
       style={{
@@ -20,8 +27,8 @@ export default function PixelWeatherPreview() {
         background: "#101018",
       }}
     >
-      {mockWeather.map((data) => (
-        <PixelWeatherCard key={data.city} data={data} />
+      {weather.map((data, idx) => (
+        <PixelWeatherCard key={data.city + idx} data={data} onChange={(d) => handleChange(idx, d)} />
       ))}
     </div>
   );

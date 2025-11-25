@@ -1,5 +1,5 @@
-import { AnimationLibrary } from "../components/animation-library";
+import PixelWeatherPreview from "./pixel-weather-preview";
 
 export default function Page() {
-  return <AnimationLibrary />;
+  return <PixelWeatherPreview />;
 }
