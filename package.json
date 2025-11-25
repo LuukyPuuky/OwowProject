@@ -6,6 +6,7 @@
     "lint": "cd owowapp && npm run lint"
   },
   "dependencies": {
+    "cors": "^2.8.5",
     "lucide-react": "^0.544.0"
   }
 }

@@ -56,8 +56,8 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
     const fd = new FormData()
     for (let i = 0; i < selectedFiles.length; i++) fd.append("images", selectedFiles[i])
 
-    // change this if your upload server runs on another origin/port
-    const uploadUrl = "/upload"
+    // server upload endpoint 
+    const uploadUrl = "http://localhost:3000/upload"
 
     try {
       const res = await fetch(uploadUrl, {
