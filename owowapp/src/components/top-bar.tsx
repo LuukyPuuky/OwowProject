@@ -2,8 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Menu, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import Modal from "@/components/modal";
+import GifUploadPopup from "@/components/gif-upload-popup";
 
 interface TopBarProps {
   onToggleSidebar: () => void;
@@ -24,6 +33,9 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
     setFilterOpen(!filterOpen);
     if (sortOpen) setSortOpen(false);
   };
+  const router = useRouter();
+  const [uploadOpen, setUploadOpen] = useState(false);
+
   return (
     <div className="px-6 py-4 flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -35,13 +47,18 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-
-        {/* Create & Library buttons next to collapse */}
-        <Link href="/create">
-          <Button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer">
-            Create
-          </Button>
-        </Link>
+        {/* Create dropdown & Library button next to collapse */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="bg-card text-muted-foreground border-2 border-border px-3 py-1 rounded-md focus:outline-none hover:bg-card hover:text-muted-foreground">
+              Create
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent sideOffset={6} className="min-w-[12rem]">
+            <DropdownMenuItem onClick={() => router.push('/create')}>Animation Maker</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setUploadOpen(true)}>Upload</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Link href="/">
           <Button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer">
             Library
@@ -109,6 +126,10 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
             </div>
           )}
         </div>
+        {/* Upload Modal rendered when Upload is selected from Create dropdown */}
+        <Modal open={uploadOpen} onClose={() => setUploadOpen(false)}>
+          <GifUploadPopup onClose={() => setUploadOpen(false)} />
+        </Modal>
       </div>
     </div>
   );
