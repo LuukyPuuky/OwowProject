@@ -23,9 +23,9 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  const BACKEND_ORIGIN = "http://localhost:4000"
-  const uploadUrl = `${BACKEND_ORIGIN}/upload`
-  const listUrl = `${BACKEND_ORIGIN}/gifs`
+  // ✅ CHANGED: Use Next.js API routes instead of external backend
+  const uploadUrl = "/api/upload"
+  const listUrl = "/api/gifs"
 
   useEffect(() => {
     // load initial list
@@ -46,7 +46,10 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
       if (!res.ok) return
       const json = await res.json()
       if (Array.isArray(json.gifs)) {
-        const files = json.gifs.map((name: string, idx: number) => ({ id: String(idx + Date.now()), name }))
+        const files = json.gifs.map((name: string, idx: number) => ({ 
+          id: String(idx + Date.now()), 
+          name 
+        }))
         setGifFiles(files)
       }
     } catch (e) {
@@ -73,7 +76,9 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
 
     setStatus("Uploading...")
     const fd = new FormData()
-    for (let i = 0; i < selectedFiles.length; i++) fd.append("images", selectedFiles[i])
+    for (let i = 0; i < selectedFiles.length; i++) {
+      fd.append("images", selectedFiles[i])
+    }
 
     try {
       const res = await fetch(uploadUrl, {
@@ -106,6 +111,14 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
     }
   }
 
+  // ✅ NEW: Handle preview for selected GIF from list
+  function handleGifSelect(gif: GifFile) {
+    setSelectedGif(gif)
+    // Show preview from public folder
+    setPreviewUrl(`/gifs/${gif.name}`)
+    setStatus(`Selected ${gif.name}`)
+  }
+
   return (
     <div className="w-full max-w-2xl bg-card rounded-2xl border border-border p-6 text-muted-foreground">
       <div className="flex items-start justify-between">
@@ -133,10 +146,14 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
             <p className="text-muted-foreground/80 text-sm text-center">Play Preview</p>
           </div>
 
-          <Button variant="outline" className="w-full text-muted-foreground" onClick={() => {
-            if (selectedGif) setStatus(`Equipped ${selectedGif.name}`)
-            else setStatus("Select a file from the list or upload one.")
-          }}>
+          <Button 
+            variant="outline" 
+            className="w-full text-muted-foreground" 
+            onClick={() => {
+              if (selectedGif) setStatus(`Equipped ${selectedGif.name}`)
+              else setStatus("Select a file from the list or upload one.")
+            }}
+          >
             Equip
           </Button>
 
@@ -150,12 +167,19 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
               className="hidden"
               id="gif-upload-input"
             />
-            <Button className="w-full text-muted-foreground flex items-center justify-center gap-2" onClick={() => fileInputRef.current?.click()}>
+            <Button 
+              className="w-full text-muted-foreground flex items-center justify-center gap-2" 
+              onClick={() => fileInputRef.current?.click()}
+            >
               <Upload className="w-4 h-4" />
               Select files
             </Button>
 
-            <Button className="w-full text-muted-foreground flex items-center justify-center gap-2" onClick={handleUpload}>
+            <Button 
+              className="w-full text-muted-foreground flex items-center justify-center gap-2" 
+              onClick={handleUpload}
+              disabled={!selectedFiles}
+            >
               <Upload className="w-4 h-4" />
               Upload
             </Button>
@@ -176,25 +200,34 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-64 overflow-y-auto">
             {gifFiles
               .filter((g) => g.name.toLowerCase().includes(searchInput.toLowerCase()))
               .map((gif) => (
                 <div
                   key={gif.id}
-                  className={`flex items-center justify-between bg-card/50 border border-border rounded-lg px-4 py-3 cursor-pointer hover:border-border transition-colors ${selectedGif?.id === gif.id ? "ring-2 ring-primary" : ""}`}
-                  onClick={() => {
-                    setSelectedGif(gif)
-                    setPreviewUrl(null)
-                    setStatus(`Selected ${gif.name}`)
-                  }}
+                  className={`flex items-center justify-between bg-card/50 border border-border rounded-lg px-4 py-3 cursor-pointer hover:border-border transition-colors ${
+                    selectedGif?.id === gif.id ? "ring-2 ring-primary" : ""
+                  }`}
+                  onClick={() => handleGifSelect(gif)}
                 >
                   <span className="text-muted-foreground text-sm truncate">{gif.name}</span>
                   <div className="flex items-center gap-2">
-                    <button className="text-muted-foreground/80 transition-colors" onClick={(e) => { e.stopPropagation(); }}>
+                    <button 
+                      className="text-muted-foreground/80 transition-colors" 
+                      onClick={(e) => { 
+                        e.stopPropagation()
+                      }}
+                    >
                       <MoreVertical className="w-4 h-4" />
                     </button>
-                    <button className="text-muted-foreground/80 transition-colors" onClick={(e) => { e.stopPropagation(); setPreviewUrl(null); setStatus(`Preview ${gif.name} not available`); }}>
+                    <button 
+                      className="text-muted-foreground/80 transition-colors" 
+                      onClick={(e) => { 
+                        e.stopPropagation()
+                        handleGifSelect(gif)
+                      }}
+                    >
                       <Play className="w-4 h-4" />
                     </button>
                   </div>
@@ -202,7 +235,12 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
               ))}
           </div>
 
-          <Button className="w-full mt-4 text-muted-foreground" onClick={() => setStatus("Saved")}>Save Animations</Button>
+          <Button 
+            className="w-full mt-4 text-muted-foreground" 
+            onClick={() => setStatus("Animations saved locally")}
+          >
+            Save Animations
+          </Button>
         </div>
       </div>
     </div>
