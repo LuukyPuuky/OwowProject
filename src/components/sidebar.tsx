@@ -6,7 +6,6 @@ import {
   ChevronUp,
   ChevronDown,
   Star,
-  MoreVertical,
   X,
 } from "lucide-react";
 import { Input } from "../components/ui/input";
@@ -23,6 +22,7 @@ interface SidebarProps {
   favorites?: Set<string>;
   onRemoveFavorite: (id: string) => void;
   equippedAnimation?: AnimationMetadata;
+  equippedCustomFrames?: Array<{ dur: number; arr: boolean[] }>;
 }
 
 export function Sidebar({
@@ -33,6 +33,7 @@ export function Sidebar({
   favorites,
   onRemoveFavorite,
   equippedAnimation,
+  equippedCustomFrames,
 }: SidebarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isFavouritesOpen, setIsFavouritesOpen] = useState(false);
@@ -146,7 +147,9 @@ export function Sidebar({
                 <div className="aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
                   <PixelDisplay
                     size="large"
-                    animationType={equippedAnimation?.id}
+                    animationType={equippedCustomFrames ? undefined : equippedAnimation?.id}
+                    customFrames={equippedCustomFrames}
+                    autoRefresh={true}
                   />
                 </div>
 

@@ -39,6 +39,51 @@ class AnimationEngine {
     }
   }
 
+  startCustom(frames: Array<{ dur: number; arr: boolean[] }>) {
+    this.currentAnimationId = null; // Custom animations don't have an ID in the registry
+    
+    let currentFrameIndex = 0;
+    let lastFrameTime = Date.now();
+
+    // Create a custom renderer for the frames
+    const customRenderer = (ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null) => {
+      if (!ctx) return;
+      
+      const now = Date.now();
+      const currentFrame = frames[currentFrameIndex];
+      
+      // Check if it's time to advance to next frame
+      if (now - lastFrameTime >= currentFrame.dur) {
+        currentFrameIndex = (currentFrameIndex + 1) % frames.length;
+        lastFrameTime = now;
+      }
+
+      // Render the current frame
+      const imageData = ctx.createImageData(80, 20);
+      const data = imageData.data;
+      
+      for (let i = 0; i < currentFrame.arr.length && i < 80 * 20; i++) {
+        const pixelValue = currentFrame.arr[i] ? 255 : 0;
+        const index = i * 4;
+        data[index] = pixelValue;     // R
+        data[index + 1] = pixelValue; // G
+        data[index + 2] = pixelValue; // B
+        data[index + 3] = 255;        // A
+      }
+      
+      ctx.putImageData(imageData, 0, 0);
+    };
+
+    this.displayManager.setRenderer(customRenderer);
+
+    if (!this.isRunning) {
+      this.isRunning = true;
+      this.ticker.start(async (frame) => {
+        this.latestFrame = await this.displayManager.render(frame);
+      });
+    }
+  }
+
   stop() {
     this.ticker.stop();
     this.isRunning = false;

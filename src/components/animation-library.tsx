@@ -12,14 +12,58 @@ export function AnimationLibrary() {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [equippedId, setEquippedId] = useState<string>("logo");
+  const [customAnimations, setCustomAnimations] = useState<Array<{
+    id: string;
+    name: string;
+    frames: Array<{ dur: number; arr: boolean[] }>;
+    createdAt: string;
+    status: string;
+  }>>([]);
+
+  // Load custom animations from localStorage
+  useEffect(() => {
+    const loadCustomAnimations = () => {
+      try {
+        const saved = localStorage.getItem('customAnimations');
+        if (saved) {
+          setCustomAnimations(JSON.parse(saved));
+        }
+      } catch (error) {
+        console.error('Failed to load custom animations:', error);
+      }
+    };
+    
+    loadCustomAnimations();
+    
+    // Listen for storage changes to update when animations are saved
+    const handleStorageChange = () => {
+      loadCustomAnimations();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom event from same window
+    window.addEventListener('customAnimationsUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('customAnimationsUpdated', handleStorageChange);
+    };
+  }, []);
 
   useEffect(() => {
     const startDefaultAnimation = async () => {
       try {
+        // Check if this is a custom animation
+        const customAnim = customAnimations.find(a => a.id === equippedId);
+        
+        const payload = customAnim 
+          ? { animationId: equippedId, customFrames: customAnim.frames }
+          : { animationId: equippedId };
+        
         await fetch("/api/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ animationId: equippedId }),
+          body: JSON.stringify(payload),
         });
       } catch (error) {
         console.error("Failed to start animation:", error);
@@ -27,7 +71,7 @@ export function AnimationLibrary() {
     };
 
     startDefaultAnimation();
-  }, [equippedId]);
+  }, [equippedId, customAnimations]);
 
   const handleAddFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -50,11 +94,29 @@ export function AnimationLibrary() {
   };
 
   const equippedAnimation = useMemo(() => {
+    // Check if it's a custom animation first
+    const customAnim = customAnimations.find(c => c.id === equippedId);
+    if (customAnim) {
+      return {
+        id: customAnim.id,
+        name: customAnim.name,
+        description: `Custom animation created on ${new Date(customAnim.createdAt).toLocaleDateString()}`,
+        status: customAnim.status as "Available" | "Equiped",
+      };
+    }
+    
+    // Otherwise check built-in animations
     const anim = Object.values(animations).find(
       (a) => a.metadata.id === equippedId
     );
     return anim?.metadata;
-  }, [equippedId]);
+  }, [equippedId, customAnimations]);
+
+  // Get custom frames for equipped animation if it's custom
+  const equippedCustomFrames = useMemo(() => {
+    const customAnim = customAnimations.find(c => c.id === equippedId);
+    return customAnim?.frames;
+  }, [equippedId, customAnimations]);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -66,6 +128,7 @@ export function AnimationLibrary() {
         favorites={favorites}
         onRemoveFavorite={handleAddFavorite}
         equippedAnimation={equippedAnimation}
+        equippedCustomFrames={equippedCustomFrames}
       />
       <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar
@@ -80,6 +143,7 @@ export function AnimationLibrary() {
           onDelete={handleDelete}
           equippedId={equippedId}
           onEquip={handleEquip}
+          customAnimations={customAnimations}
         />
       </main>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { PixelDisplay } from "../components/pixel-display";
@@ -15,6 +16,7 @@ interface AnimationCardProps {
   title: string;
   status: string;
   animationType?: string;
+  customFrames?: Array<{ dur: number; arr: boolean[] }>;
   isFavorite?: boolean;
   onDelete: (id: string) => void;
   onFavorite: (id: string) => void;
@@ -26,11 +28,14 @@ export function AnimationCard({
   id,
   title,
   animationType,
+  customFrames,
   onDelete,
   onFavorite,
   isEquipped,
   onEquip,
 }: AnimationCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   const handleCardClick = () => {
     onEquip(id);
   };
@@ -49,6 +54,8 @@ export function AnimationCard({
     <div
       className="border-3 border-border rounded-lg bg-card overflow-hidden group hover:border-muted-foreground/50 transition-colors cursor-pointer"
       onClick={handleCardClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="p-4">
         <div className="flex justify-end mb-2 cursor-pointer">
@@ -92,8 +99,9 @@ export function AnimationCard({
         <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
           <PixelDisplay
             size="large"
-            animationType={animationType || id || "1"}
-            autoRefresh={true}
+            animationType={customFrames ? undefined : (animationType || id || "1")}
+            customFrames={customFrames}
+            autoRefresh={isEquipped || isHovered}
           />
         </div>
 

@@ -13,6 +13,13 @@ interface AnimationGridProps {
   onDelete: (id: string) => void;
   equippedId: string;
   onEquip: (id: string) => void;
+  customAnimations?: Array<{
+    id: string;
+    name: string;
+    frames: Array<{ dur: number; arr: boolean[] }>;
+    createdAt: string;
+    status: string;
+  }>;
 }
 
 export function AnimationGrid({
@@ -24,6 +31,7 @@ export function AnimationGrid({
   onDelete,
   equippedId,
   onEquip,
+  customAnimations = [],
 }: AnimationGridProps) {
   type Animation = {
     id: string;
@@ -38,11 +46,21 @@ export function AnimationGrid({
 
   // Initialize with all animations
   const allAnimations = useMemo(
-    () =>
-      Object.values(animations)
+    () => {
+      const builtInAnimations = Object.values(animations)
         .map((AnimationObject: AnimationObject) => AnimationObject.metadata)
-        .filter((animation: Animation) => animation && animation.id),
-    []
+        .filter((animation: Animation) => animation && animation.id);
+      
+      // Merge custom animations
+      const customAnims = customAnimations.map((custom) => ({
+        id: custom.id,
+        name: custom.name,
+        status: custom.status
+      }));
+      
+      return [...builtInAnimations, ...customAnims];
+    },
+    [customAnimations]
   );
 
   const filteredAnimations = allAnimations
@@ -66,20 +84,26 @@ export function AnimationGrid({
               : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
           }`}
         >
-          {filteredAnimations.map((animation) => (
-            <AnimationCard
-              key={animation.id}
-              id={animation.id}
-              title={animation.name}
-              status={animation.status}
-              animationType={animation.id}
-              isFavorite={favorites.has(animation.id)}
-              onDelete={onDelete}
-              onFavorite={onAddFavorite}
-              isEquipped={equippedId === animation.id}
-              onEquip={onEquip}
-            />
-          ))}
+          {filteredAnimations.map((animation) => {
+            // Find custom animation data if this is a custom animation
+            const customAnim = customAnimations.find(c => c.id === animation.id);
+            
+            return (
+              <AnimationCard
+                key={animation.id}
+                id={animation.id}
+                title={animation.name}
+                status={animation.status}
+                animationType={customAnim ? undefined : animation.id}
+                customFrames={customAnim?.frames}
+                isFavorite={favorites.has(animation.id)}
+                onDelete={onDelete}
+                onFavorite={onAddFavorite}
+                isEquipped={equippedId === animation.id}
+                onEquip={onEquip}
+              />
+            );
+          })}
         </div>
       )}
     </div>
