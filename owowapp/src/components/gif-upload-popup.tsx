@@ -1,4 +1,3 @@
-// ...existing code...
 "use client"
 
 import { useEffect, useRef, useState } from "react"
@@ -15,24 +14,45 @@ interface Props {
   onUploaded?: () => void
 }
 
-// Content-only GIF upload panel — intended to be rendered inside a shared Modal wrapper.
 export default function GifUploadPopup({ onClose, onUploaded }: Props) {
   const [selectedGif, setSelectedGif] = useState<GifFile | null>(null)
-  const [gifFiles, setGifFiles] = useState<GifFile[]>([
-    { id: "1", name: "sh8nd93n3rh9h39fn2bdb.gif" },
-    { id: "2", name: "sh7b39nd93n3rh9h39fn-2 -..." },
-  ])
+  const [gifFiles, setGifFiles] = useState<GifFile[]>([])
   const [searchInput, setSearchInput] = useState("")
   const [status, setStatus] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  const BACKEND_ORIGIN = "http://localhost:4000"
+  const uploadUrl = `${BACKEND_ORIGIN}/upload`
+  const listUrl = `${BACKEND_ORIGIN}/gifs`
+
   useEffect(() => {
+    // load initial list
+    fetchList()
+    // listen for global upload events
+    const handler = () => fetchList()
+    window.addEventListener("uploads:updated", handler)
     return () => {
+      window.removeEventListener("uploads:updated", handler)
       if (previewUrl) URL.revokeObjectURL(previewUrl)
     }
-  }, [previewUrl])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function fetchList() {
+    try {
+      const res = await fetch(listUrl)
+      if (!res.ok) return
+      const json = await res.json()
+      if (Array.isArray(json.gifs)) {
+        const files = json.gifs.map((name: string, idx: number) => ({ id: String(idx + Date.now()), name }))
+        setGifFiles(files)
+      }
+    } catch (e) {
+      console.warn("Failed to fetch gif list", e)
+    }
+  }
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
@@ -41,7 +61,6 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
       setPreviewUrl(null)
       return
     }
-    // preview first file
     const url = URL.createObjectURL(files[0])
     setPreviewUrl(url)
   }
@@ -55,9 +74,6 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
     setStatus("Uploading...")
     const fd = new FormData()
     for (let i = 0; i < selectedFiles.length; i++) fd.append("images", selectedFiles[i])
-
-    // server upload endpoint 
-    const uploadUrl = "http://localhost:4000/upload"
 
     try {
       const res = await fetch(uploadUrl, {
@@ -73,14 +89,13 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
       const json = await res.json()
       setStatus("Upload complete: " + (json.uploaded?.map?.((x: any) => x.name).join(", ") || "ok"))
 
-      // notify app to refresh lists/previews
+      // refresh saved gifs from backend so UI shows newly uploaded items
+      await fetchList()
+
+      // notify app to refresh other parts
       window.dispatchEvent(new CustomEvent("uploads:updated", { detail: json }))
       onUploaded?.()
-      // optionally refresh local list with returned names
-      if (Array.isArray(json.uploaded)) {
-        const newFiles = json.uploaded.map((u: any, idx: number) => ({ id: String(Date.now() + idx), name: u.name }))
-        setGifFiles((prev) => [...newFiles, ...prev])
-      }
+
       // clear selection
       setSelectedFiles(null)
       setPreviewUrl(null)
@@ -108,7 +123,6 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
             <p className="text-muted-foreground/80 text-sm text-center mb-3">Preview</p>
             <div className="bg-background h-32 rounded-lg flex items-center justify-center mb-3">
               {previewUrl ? (
-                // show GIF/image preview; img will play GIFs automatically
                 <img src={previewUrl} alt="preview" className="max-h-28 object-contain" />
               ) : (
                 <svg className="w-8 h-8 text-muted-foreground" fill="currentColor" viewBox="0 0 20 20">
@@ -120,12 +134,8 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
           </div>
 
           <Button variant="outline" className="w-full text-muted-foreground" onClick={() => {
-            // equip action placeholder
-            if (selectedGif) {
-              setStatus(`Equipped ${selectedGif.name}`)
-            } else {
-              setStatus("Select a file from the list or upload one.")
-            }
+            if (selectedGif) setStatus(`Equipped ${selectedGif.name}`)
+            else setStatus("Select a file from the list or upload one.")
           }}>
             Equip
           </Button>
@@ -159,7 +169,7 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
           <div>
             <input
               type="text"
-              placeholder="Select_animation.gif"
+              placeholder="Filter saved animations..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full bg-card/80 border border-border rounded-lg px-4 py-2 text-muted-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-border"
@@ -175,14 +185,13 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
                   className={`flex items-center justify-between bg-card/50 border border-border rounded-lg px-4 py-3 cursor-pointer hover:border-border transition-colors ${selectedGif?.id === gif.id ? "ring-2 ring-primary" : ""}`}
                   onClick={() => {
                     setSelectedGif(gif)
-                    // set preview to a blob URL if you have local copy; placeholder behaviour:
                     setPreviewUrl(null)
                     setStatus(`Selected ${gif.name}`)
                   }}
                 >
                   <span className="text-muted-foreground text-sm truncate">{gif.name}</span>
                   <div className="flex items-center gap-2">
-                    <button className="text-muted-foreground/80 transition-colors" onClick={(e) => { e.stopPropagation(); /* more actions */ }}>
+                    <button className="text-muted-foreground/80 transition-colors" onClick={(e) => { e.stopPropagation(); }}>
                       <MoreVertical className="w-4 h-4" />
                     </button>
                     <button className="text-muted-foreground/80 transition-colors" onClick={(e) => { e.stopPropagation(); setPreviewUrl(null); setStatus(`Preview ${gif.name} not available`); }}>
