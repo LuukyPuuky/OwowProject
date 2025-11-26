@@ -1,5 +1,11 @@
 "use client";
-import React, { ReactElement } from "react";
+
+// Add missing props type
+export interface PixelWeatherCardProps {
+  data: PixelWeatherData;
+  onChange?: (data: PixelWeatherData) => void;
+}
+import React, { ReactElement, useState, useRef } from "react";
 
 const pixelIcons: Record<string, ReactElement> = {
   sun: (
@@ -116,18 +122,19 @@ export interface PixelWeatherData {
   condition: "sun" | "cloud" | "rain" | "snow";
 }
 
-import { useState } from "react";
 
-export interface PixelWeatherCardProps {
-  data: PixelWeatherData;
-  onChange?: (data: PixelWeatherData) => void;
-}
-
-export const PixelWeatherCard: React.FC<PixelWeatherCardProps> = ({ data, onChange }) => {
+export function PixelWeatherCard({ data, onChange }: PixelWeatherCardProps) {
   const [flipped, setFlipped] = useState(false);
   const [editData, setEditData] = useState<PixelWeatherData>(data);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
-  const handleFlip = () => setFlipped((f) => !f);
+  const handleFlip = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
+    }
+    setFlipped((f) => !f);
+  };
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     const newData = {
@@ -139,175 +146,182 @@ export const PixelWeatherCard: React.FC<PixelWeatherCardProps> = ({ data, onChan
   };
 
   return (
-    <div
-      className="pixel-flip-card"
-      style={{
-        perspective: 1000,
-        margin: 8,
-        width: 200,
-        height: 260,
-        display: "inline-block",
-      }}
-    >
+    <>
+      <audio ref={audioRef} preload="auto">
+        <source src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" type="audio/ogg" />
+        <source src="https://www.soundjay.com/buttons/sounds/button-16.mp3" type="audio/mpeg" />
+        Your browser does not support the audio element.
+      </audio>
       <div
-        className={`pixel-flip-inner${flipped ? " flipped" : ""}`}
+        className="pixel-flip-card"
         style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          transition: "transform 0.6s cubic-bezier(.4,2,.6,1)",
-          transformStyle: "preserve-3d",
-          transform: flipped ? "rotateY(180deg)" : "none",
+          perspective: 1000,
+          margin: 8,
+          width: 200,
+          height: 260,
+          display: "inline-block",
         }}
       >
-        {/* Front */}
         <div
-          className="pixel-flip-front"
+          className={`pixel-flip-inner${flipped ? " flipped" : ""}`}
           style={{
-            position: "absolute",
+            position: "relative",
             width: "100%",
             height: "100%",
-            backfaceVisibility: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#181818",
-            border: "4px solid #444",
-            borderRadius: 0,
-            boxShadow: "0 0 0 4px #111, 0 0 0 8px #222",
-            fontFamily: "'Press Start 2P', monospace",
-            imageRendering: "pixelated",
+            transition: "transform 0.6s cubic-bezier(.4,2,.6,1)",
+            transformStyle: "preserve-3d",
+            transform: flipped ? "rotateY(180deg)" : "none",
           }}
-          onClick={handleFlip}
         >
-          <div style={{ marginBottom: 12 }}>{pixelIcons[editData.condition]}</div>
-          <div style={{
-            fontSize: 40,
-            color: "#fff",
-            textShadow: "2px 2px 0 #000, 0 0 8px #00e0ff",
-            fontFamily: "'Press Start 2P', monospace",
-            letterSpacing: 2,
-            marginBottom: 8,
-          }}>
-            {Math.round(editData.temp)}°
-          </div>
-          <div style={{
-            fontSize: 16,
-            color: "#fff",
-            background: "#222",
-            padding: "2px 8px",
-            border: "2px solid #00e0ff",
-            borderRadius: 0,
-            fontFamily: "'Press Start 2P', monospace",
-            marginBottom: 8,
-            textTransform: "uppercase",
-            letterSpacing: 1,
-          }}>{editData.city}</div>
-          <div style={{
-            fontSize: 12,
-            color: "#00e0ff",
-            fontFamily: "'Press Start 2P', monospace",
-            letterSpacing: 2,
-            textTransform: "uppercase",
-          }}>
-            {editData.condition.charAt(0).toUpperCase() + editData.condition.slice(1)}
-          </div>
-          <div style={{ fontSize: 10, color: "#444", marginTop: 8 }}>[Click to edit]</div>
-          <style>{`
-            @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-          `}</style>
-        </div>
-        {/* Back (edit) */}
-        <div
-          className="pixel-flip-back"
-          style={{
-            position: "absolute",
-            width: "100%",
-            height: "100%",
-            backfaceVisibility: "hidden",
-            background: "#111",
-            color: "#fff",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "4px solid #00e0ff",
-            fontFamily: "'Press Start 2P', monospace",
-            transform: "rotateY(180deg)",
-          }}
-          onClick={handleFlip}
-        >
-          <label style={{ fontSize: 10, color: "#00e0ff", marginBottom: 4 }}>City</label>
-          <input
-            name="city"
-            value={editData.city}
-            onChange={handleInput}
+          {/* Front */}
+          <div
+            className="pixel-flip-front"
             style={{
-              fontFamily: "'Press Start 2P', monospace",
-              fontSize: 14,
-              background: "#222",
-              color: "#fff",
-              border: "2px solid #00e0ff",
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+              backfaceVisibility: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#181818",
+              border: "4px solid #444",
               borderRadius: 0,
-              marginBottom: 8,
-              padding: 4,
-              textAlign: "center",
-              width: 120,
-            }}
-            onClick={e => e.stopPropagation()}
-          />
-          <label style={{ fontSize: 10, color: "#00e0ff", marginBottom: 4 }}>Temp</label>
-          <input
-            name="temp"
-            type="number"
-            value={editData.temp}
-            onChange={handleInput}
-            style={{
+              boxShadow: "0 0 0 4px #111, 0 0 0 8px #222",
               fontFamily: "'Press Start 2P', monospace",
-              fontSize: 14,
-              background: "#222",
-              color: "#fff",
-              border: "2px solid #00e0ff",
-              borderRadius: 0,
-              marginBottom: 8,
-              padding: 4,
-              textAlign: "center",
-              width: 80,
+              imageRendering: "pixelated",
             }}
-            onClick={e => e.stopPropagation()}
-          />
-          <label style={{ fontSize: 10, color: "#00e0ff", marginBottom: 4 }}>Condition</label>
-          <select
-            name="condition"
-            value={editData.condition}
-            onChange={handleInput}
-            style={{
-              fontFamily: "'Press Start 2P', monospace",
-              fontSize: 14,
-              background: "#222",
-              color: "#fff",
-              border: "2px solid #00e0ff",
-              borderRadius: 0,
-              marginBottom: 8,
-              padding: 4,
-              width: 100,
-            }}
-            onClick={e => e.stopPropagation()}
+            onClick={handleFlip}
           >
-            <option value="sun">Sun</option>
-            <option value="cloud">Cloud</option>
-            <option value="rain">Rain</option>
-            <option value="snow">Snow</option>
-          </select>
-          <div style={{ fontSize: 10, color: "#444", marginTop: 8 }}>[Click to flip back]</div>
+            <div style={{ marginBottom: 12 }}>{pixelIcons[editData.condition]}</div>
+            <div style={{
+              fontSize: 40,
+              color: "#fff",
+              textShadow: "2px 2px 0 #000, 0 0 8px #00e0ff",
+              fontFamily: "'Press Start 2P', monospace",
+              letterSpacing: 2,
+              marginBottom: 8,
+            }}>
+              {Math.round(editData.temp)}°
+            </div>
+            <div style={{
+              fontSize: 16,
+              color: "#fff",
+              background: "#222",
+              padding: "2px 8px",
+              border: "2px solid #00e0ff",
+              borderRadius: 0,
+              fontFamily: "'Press Start 2P', monospace",
+              marginBottom: 8,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}>{editData.city}</div>
+            <div style={{
+              fontSize: 12,
+              color: "#00e0ff",
+              fontFamily: "'Press Start 2P', monospace",
+              letterSpacing: 2,
+              textTransform: "uppercase",
+            }}>
+              {editData.condition.charAt(0).toUpperCase() + editData.condition.slice(1)}
+            </div>
+            <div style={{ fontSize: 10, color: "#444", marginTop: 8 }}>[Click to edit]</div>
+            <style>{`
+              @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+            `}</style>
+          </div>
+          {/* Back (edit) */}
+          <div
+            className="pixel-flip-back"
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "100%",
+              backfaceVisibility: "hidden",
+              background: "#111",
+              color: "#fff",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "4px solid #00e0ff",
+              fontFamily: "'Press Start 2P', monospace",
+              transform: "rotateY(180deg)",
+            }}
+            onClick={handleFlip}
+          >
+            <label style={{ fontSize: 10, color: "#00e0ff", marginBottom: 4 }}>City</label>
+            <input
+              name="city"
+              value={editData.city}
+              onChange={handleInput}
+              style={{
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: 14,
+                background: "#222",
+                color: "#fff",
+                border: "2px solid #00e0ff",
+                borderRadius: 0,
+                marginBottom: 8,
+                padding: 4,
+                textAlign: "center",
+                width: 120,
+              }}
+              onClick={e => e.stopPropagation()}
+            />
+            <label style={{ fontSize: 10, color: "#00e0ff", marginBottom: 4 }}>Temp</label>
+            <input
+              name="temp"
+              type="number"
+              value={editData.temp}
+              onChange={handleInput}
+              style={{
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: 14,
+                background: "#222",
+                color: "#fff",
+                border: "2px solid #00e0ff",
+                borderRadius: 0,
+                marginBottom: 8,
+                padding: 4,
+                textAlign: "center",
+                width: 80,
+              }}
+              onClick={e => e.stopPropagation()}
+            />
+            <label style={{ fontSize: 10, color: "#00e0ff", marginBottom: 4 }}>Condition</label>
+            <select
+              name="condition"
+              value={editData.condition}
+              onChange={handleInput}
+              style={{
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: 14,
+                background: "#222",
+                color: "#fff",
+                border: "2px solid #00e0ff",
+                borderRadius: 0,
+                marginBottom: 8,
+                padding: 4,
+                width: 100,
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <option value="sun">Sun</option>
+              <option value="cloud">Cloud</option>
+              <option value="rain">Rain</option>
+              <option value="snow">Snow</option>
+            </select>
+            <div style={{ fontSize: 10, color: "#444", marginTop: 8 }}>[Click to flip back]</div>
+          </div>
         </div>
+        <style>{`
+          .pixel-flip-card { user-select: none; }
+          .pixel-flip-inner { transition: transform 0.6s cubic-bezier(.4,2,.6,1); }
+          .pixel-flip-inner.flipped { transform: rotateY(180deg); }
+        `}</style>
       </div>
-      <style>{`
-        .pixel-flip-card { user-select: none; }
-        .pixel-flip-inner { transition: transform 0.6s cubic-bezier(.4,2,.6,1); }
-        .pixel-flip-inner.flipped { transform: rotateY(180deg); }
-      `}</style>
-    </div>
+    </>
   );
-};
+}

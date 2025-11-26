@@ -1,6 +1,9 @@
 "use client";
 import React, { useState } from "react";
-import { PixelWeatherCard, PixelWeatherData } from "@/components/PixelWeatherCard";
+import dynamic from "next/dynamic";
+import { PixelWeatherData } from "@/components/PixelWeatherCard";
+
+const PixelWeatherCard = dynamic(() => import("@/components/PixelWeatherCard").then(mod => mod.PixelWeatherCard), { ssr: false });
 
 const initialWeather: PixelWeatherData[] = [
   { city: "Amsterdam", temp: 17, condition: "sun" },
