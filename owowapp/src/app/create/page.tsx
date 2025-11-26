@@ -1,15 +1,14 @@
 "use client";
 import { useState, useCallback, useEffect, useRef, memo, useMemo } from "react";
-import Link from "next/link";
 import { Sidebar } from "@/components/sidebar";
 import { PixelCanvas } from "@/components/pixel-canvas";
-import { Menu } from "lucide-react";
-import { ControlPanel } from "@/components/control-panel";
+import { TopBar as Header } from "@/components/top-bar";
 import LatestAnimations from "@/components/latest-animations";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/lib/canvas-utils";
 import type { Frame, BrushMode, BrushShape, Tool } from "@/lib/types";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-// Memoized thumbnail component to prevent re-renders during drawing
+// Memoized thumbnail component
 const FrameThumbnail = memo<{
   frame: Frame;
   index: number;
@@ -18,7 +17,6 @@ const FrameThumbnail = memo<{
 }>(({ frame, index, isActive, onClick }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Render thumbnail only once when frame data changes
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -26,14 +24,10 @@ const FrameThumbnail = memo<{
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
-    // Scale factor for thumbnail
-    const cellSize = 2; // 2px per pixel for thumbnail
-
-    // Clear canvas (black background)
+    const cellSize = 2;
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw pixels
     for (let i = 0; i < frame.arr.length; i++) {
       if (frame.arr[i]) {
         const x = i % CANVAS_WIDTH;
@@ -47,10 +41,10 @@ const FrameThumbnail = memo<{
   return (
     <button
       onClick={onClick}
-      className={`w-40 h-10 rounded-md bg-[#0b0b0b] border-2 flex-shrink-0 transition-all overflow-hidden ${
+      className={`w-20 h-12 rounded border-2 transition-all flex items-center justify-center shrink-0 ${
         isActive
-          ? "border-white ring-2 ring-white"
-          : "border-[#323232] hover:border-[#444444]"
+          ? 'border-neutral-500 bg-neutral-900'
+          : 'border-neutral-800 bg-black hover:border-neutral-700'
       }`}
       title={`Frame ${index + 1} • ${(frame.dur / 1000).toFixed(1)}s`}
     >
@@ -59,9 +53,7 @@ const FrameThumbnail = memo<{
         width={CANVAS_WIDTH * 2}
         height={CANVAS_HEIGHT * 2}
         className="w-full h-full"
-        style={{
-          imageRendering: 'pixelated',
-        }}
+        style={{ imageRendering: 'pixelated' }}
       />
     </button>
   );
@@ -70,8 +62,8 @@ const FrameThumbnail = memo<{
 FrameThumbnail.displayName = 'FrameThumbnail';
 
 export default function CreatePage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const favorites = new Set<string>();
 
   // Frame & Animation State
   const [frames, setFrames] = useState<Frame[]>([
@@ -82,12 +74,10 @@ export default function CreatePage() {
   const playTimerRef = useRef<NodeJS.Timeout | null>(null);
   const framesRef = useRef(frames);
   
-  // Keep framesRef in sync
   useEffect(() => {
     framesRef.current = frames;
   }, [frames]);
   
-  // Current working pixels (separate from saved frames for performance)
   const [workingPixels, setWorkingPixels] = useState<boolean[]>(
     new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false)
   );
@@ -101,19 +91,49 @@ export default function CreatePage() {
 
   // Project State
   const [projectName, setProjectName] = useState("Untitled");
-  // Store duration in seconds (display value), convert to ms for frames
   const [frameDurationSeconds, setFrameDurationSeconds] = useState(1);
 
-  // History for undo/redo
+  // History
   const [history, setHistory] = useState<Frame[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  const favorites = new Set<string>();
-  const handleRemoveFavorite = () => {
-    // placeholder
+  // Timeline scroll
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
   };
 
-  // History management
+  useEffect(() => {
+    checkScroll();
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+    }
+    return () => {
+      container?.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [frames.length]);
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 300;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+      setTimeout(checkScroll, 100);
+    }
+  };
+
   const pushHistory = useCallback(() => {
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(JSON.parse(JSON.stringify(frames)));
@@ -122,7 +142,6 @@ export default function CreatePage() {
     setHistoryIndex(newHistory.length - 1);
   }, [frames, history, historyIndex]);
 
-  // Save working pixels to the actual frame (call this when done drawing, switching frames, etc.)
   const saveWorkingPixelsToFrame = useCallback(() => {
     setFrames(prevFrames => {
       const newFrames = [...prevFrames];
@@ -131,34 +150,26 @@ export default function CreatePage() {
     });
   }, [currentFrameIndex, workingPixels]);
 
-  // Load frame pixels into working area when switching frames ONLY
-  // Skip during playback for performance
   useEffect(() => {
-    if (playing) return; // Don't reload pixels during playback
+    if (playing) return;
     setWorkingPixels([...framesRef.current[currentFrameIndex].arr]);
-    // Sync frame duration when switching frames (convert ms to seconds)
     setFrameDurationSeconds(framesRef.current[currentFrameIndex].dur / 1000);
-  }, [currentFrameIndex, playing]); // Only reload when frame index changes, not when frames update
+  }, [currentFrameIndex, playing]);
 
-  // Auto-save working pixels to frame after drawing stops (debounced)
-  // Don't auto-save during playback to prevent performance issues
   useEffect(() => {
-    if (playing) return; // Skip auto-save during playback
+    if (playing) return;
     
     const timeoutId = setTimeout(() => {
       saveWorkingPixelsToFrame();
-    }, 500); // Save 500ms after last change
+    }, 500);
     
     return () => clearTimeout(timeoutId);
   }, [workingPixels, saveWorkingPixelsToFrame, playing]);
 
-  // Frame operations
   const addFrame = useCallback(() => {
-    // Save current work before adding new frame
     saveWorkingPixelsToFrame();
     pushHistory();
     const newFrames = [...frames];
-    // Use current frame's duration for the new frame
     const currentDuration = frames[currentFrameIndex].dur;
     newFrames.splice(currentFrameIndex + 1, 0, {
       dur: currentDuration,
@@ -166,17 +177,15 @@ export default function CreatePage() {
     });
     setFrames(newFrames);
     setCurrentFrameIndex(currentFrameIndex + 1);
-    // New frame has same duration as current, so frameDuration stays the same
   }, [frames, currentFrameIndex, pushHistory, saveWorkingPixelsToFrame]);
 
   const duplicateFrame = useCallback(() => {
-    // Save current work before duplicating
     saveWorkingPixelsToFrame();
     pushHistory();
     const newFrames = [...frames];
     newFrames.splice(currentFrameIndex + 1, 0, {
       dur: frames[currentFrameIndex].dur,
-      arr: [...workingPixels] // Duplicate the current working pixels
+      arr: [...workingPixels]
     });
     setFrames(newFrames);
     setCurrentFrameIndex(currentFrameIndex + 1);
@@ -195,24 +204,20 @@ export default function CreatePage() {
     setFrames(newFrames);
     const newIndex = Math.min(currentFrameIndex, newFrames.length - 1);
     setCurrentFrameIndex(newIndex);
-    // Load the new current frame
     setWorkingPixels([...newFrames[newIndex].arr]);
     setFrameDurationSeconds(newFrames[newIndex].dur / 1000);
   }, [frames, currentFrameIndex, pushHistory]);
 
   const nextFrame = useCallback(() => {
-    // Save current work before switching
     saveWorkingPixelsToFrame();
     setCurrentFrameIndex((prev) => Math.min(prev + 1, frames.length - 1));
   }, [frames.length, saveWorkingPixelsToFrame]);
 
   const prevFrame = useCallback(() => {
-    // Save current work before switching
     saveWorkingPixelsToFrame();
     setCurrentFrameIndex((prev) => Math.max(prev - 1, 0));
   }, [saveWorkingPixelsToFrame]);
 
-  // Playback - Fixed to use refs to avoid stale closures
   const playingRef = useRef(false);
   
   useEffect(() => {
@@ -226,17 +231,14 @@ export default function CreatePage() {
     let currentIndex = currentFrameIndex;
     
     const step = () => {
-      if (!playingRef.current) return; // Check if still playing
+      if (!playingRef.current) return;
       
-      // Move to next frame
       currentIndex = (currentIndex + 1) % framesRef.current.length;
       setCurrentFrameIndex(currentIndex);
       
-      // Schedule next step with the current frame's duration (how long to show THIS frame)
       playTimerRef.current = setTimeout(step, framesRef.current[currentIndex].dur);
     };
     
-    // Start playback after showing current frame for its duration
     playTimerRef.current = setTimeout(step, framesRef.current[currentIndex].dur);
   }, [currentFrameIndex]);
 
@@ -246,7 +248,6 @@ export default function CreatePage() {
       clearTimeout(playTimerRef.current);
       playTimerRef.current = null;
     }
-    // Reload working pixels after stopping to allow editing
     setWorkingPixels([...framesRef.current[currentFrameIndex].arr]);
   }, [currentFrameIndex]);
 
@@ -258,42 +259,35 @@ export default function CreatePage() {
     }
   }, [play, stop]);
 
-  // Update working pixels (doesn't affect frame thumbnails)
   const updateCurrentFramePixels = useCallback((newPixels: boolean[]) => {
     setWorkingPixels(newPixels);
   }, []);
 
-  // Get the pixels to display - during playback show frame, otherwise show working pixels
-  // Use useMemo to avoid creating new array reference on every render
   const displayPixels = useMemo(() => {
     return playing ? frames[currentFrameIndex].arr : workingPixels;
   }, [playing, frames, currentFrameIndex, workingPixels]);
 
-  // Update frame duration - convert seconds to milliseconds
   const updateFrameDuration = useCallback((seconds: number) => {
     setFrameDurationSeconds(seconds);
-    const durMs = Math.round(seconds * 1000); // Convert to ms
+    const durMs = Math.round(seconds * 1000);
     const newFrames = [...frames];
     newFrames[currentFrameIndex] = { ...newFrames[currentFrameIndex], dur: durMs };
     setFrames(newFrames);
     framesRef.current = newFrames;
   }, [frames, currentFrameIndex]);
 
-  // Calculate onion skin overlay
   const getOnionSkin = useCallback(() => {
     if (!onionEnabled || currentFrameIndex === 0) return undefined;
     const prevFrame = frames[currentFrameIndex - 1];
     return prevFrame ? prevFrame.arr : undefined;
   }, [onionEnabled, currentFrameIndex, frames]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (playTimerRef.current) clearTimeout(playTimerRef.current);
     };
   }, []);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -334,56 +328,33 @@ export default function CreatePage() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlayPause, nextFrame, prevFrame, setBrushMode, setBrushSize]);
+  }, [togglePlayPause, nextFrame, prevFrame]);
 
   return (
-    <div className="min-h-screen flex">
+    <div className="flex h-screen bg-background text-foreground">
       <Sidebar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        isCollapsed={isCollapsed}
-        onToggleSidebar={() => setIsCollapsed(!isCollapsed)}
+        searchQuery=""
+        onSearchChange={() => {}}
+        isCollapsed={isSidebarCollapsed}
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         favorites={favorites}
-        onRemoveFavorite={handleRemoveFavorite}
+        onRemoveFavorite={() => {}}
       />
 
-      <main className="flex-1 p-6" style={{ backgroundColor: "#161616" }}>
-        {/* Top area */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Collapse / menu button to toggle sidebar like main page */}
-              <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="text-muted-foreground p-2 rounded-md"
-                aria-label="Toggle sidebar"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-
-              <button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md">
-                Create
-              </button>
-
-              {/* Library navigates back to main library page */}
-              <Link href="/" className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md inline-block">
-                Library
-              </Link>
-            </div>
-            <div className="border-b border-border flex-1 mx-6" />
-          </div>
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="shrink-0">
+          <Header onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} />
         </div>
 
-        {/* Editor + Right panel */}
-        <div className="grid grid-cols-12 gap-6">
-          {/* Main editor area */}
-          <div className="col-span-8">
+        <div className="flex-1 flex overflow-hidden gap-2 px-6">
+          {/* Canvas and timeline - takes remaining space */}
+          <div className="flex-1 flex flex-col min-w-0 bg-background pt-4">
             {/* Tool Bar */}
-            <div className="bg-[#161616] border border-[#323232] rounded-md p-3 mb-4">
+            <div className="bg-background border-2 border-neutral-800 rounded-lg p-3 mb-4">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[#c3c3c3] text-sm font-medium">Tools</span>
-                <div className="flex-1 border-b border-[#323232]"></div>
-                <span className="text-[#666666] text-xs">B • X • L • E • R • F</span>
+                <span className="text-neutral-300 text-sm font-medium">Tools</span>
+                <div className="flex-1 border-b border-neutral-800"></div>
+                <span className="text-neutral-600 text-xs">B • X • L • E • R • F</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -392,9 +363,9 @@ export default function CreatePage() {
                     setBrushMode('paint');
                   }}
                   className={`p-2 rounded-md transition-colors ${
-                    activeTool === 'brush' && brushMode === 'paint'
+                    brushMode === 'paint'
                       ? 'bg-white text-black'
-                      : 'bg-[#161616] text-[#c3c3c3] hover:bg-[#2a2a2a]'
+                      : 'bg-background text-neutral-300 hover:bg-neutral-800'
                   }`}
                   title="Brush (B)"
                 >
@@ -408,9 +379,9 @@ export default function CreatePage() {
                     setBrushMode('erase');
                   }}
                   className={`p-2 rounded-md transition-colors ${
-                    activeTool === 'brush' && brushMode === 'erase'
+                    brushMode === 'erase'
                       ? 'bg-white text-black'
-                      : 'bg-[#161616] text-[#c3c3c3] hover:bg-[#2a2a2a]'
+                      : 'bg-background text-neutral-300 hover:bg-neutral-800'
                   }`}
                   title="Eraser (X)"
                 >
@@ -418,13 +389,13 @@ export default function CreatePage() {
                     <path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0M4.22 15.58l3.54 3.53c.78.79 2.04.79 2.83 0l3.53-3.53-6.36-6.36-3.54 3.53z"/>
                   </svg>
                 </button>
-                <div className="w-px h-6 bg-[#323232] mx-1"></div>
+                <div className="w-px h-6 bg-neutral-800 mx-1"></div>
                 <button
                   onClick={() => setActiveTool('line')}
                   className={`p-2 rounded-md transition-colors ${
                     activeTool === 'line'
                       ? 'bg-white text-black'
-                      : 'bg-[#161616] text-[#c3c3c3] hover:bg-[#2a2a2a]'
+                      : 'bg-background text-neutral-300 hover:bg-neutral-800'
                   }`}
                   title="Line (L)"
                 >
@@ -437,7 +408,7 @@ export default function CreatePage() {
                   className={`p-2 rounded-md transition-colors ${
                     activeTool === 'ellipse'
                       ? 'bg-white text-black'
-                      : 'bg-[#161616] text-[#c3c3c3] hover:bg-[#2a2a2a]'
+                      : 'bg-background text-neutral-300 hover:bg-neutral-800'
                   }`}
                   title="Ellipse (E)"
                 >
@@ -450,7 +421,7 @@ export default function CreatePage() {
                   className={`p-2 rounded-md transition-colors ${
                     activeTool === 'rect'
                       ? 'bg-white text-black'
-                      : 'bg-[#161616] text-[#c3c3c3] hover:bg-[#2a2a2a]'
+                      : 'bg-background text-neutral-300 hover:bg-neutral-800'
                   }`}
                   title="Rectangle (R)"
                 >
@@ -463,7 +434,7 @@ export default function CreatePage() {
                   className={`p-2 rounded-md transition-colors ${
                     activeTool === 'fill'
                       ? 'bg-white text-black'
-                      : 'bg-[#161616] text-[#c3c3c3] hover:bg-[#2a2a2a]'
+                      : 'bg-background text-neutral-300 hover:bg-neutral-800'
                   }`}
                   title="Fill (F)"
                 >
@@ -472,107 +443,317 @@ export default function CreatePage() {
                   </svg>
                 </button>
                 <div className="flex-1"></div>
-                <div className="text-[#666666] text-xs">
+                <div className="text-neutral-600 text-xs">
                   [ ] Size • Space Play
                 </div>
               </div>
             </div>
 
-            <div className="bg-black rounded-md overflow-hidden mb-4 p-6">
-              <div className="w-full flex items-center justify-center">
-                <PixelCanvas
-                  pixels={displayPixels}
-                  onPixelsChange={playing ? () => {} : updateCurrentFramePixels}
-                  brushSize={brushSize}
-                  brushMode={brushMode}
-                  brushShape={brushShape}
-                  activeTool={activeTool}
-                  onionSkin={getOnionSkin()}
-                  cellSize={8}
-                  showGrid={true}
-                />
-              </div>
-            </div>
-
-            {/* Timeline thumbnails */}
-            <div className="flex items-center gap-4 mb-6 overflow-x-auto pb-2">
-              {frames.map((frame, i) => (
-                <FrameThumbnail
-                  key={i}
-                  frame={frame}
-                  index={i}
-                  isActive={i === currentFrameIndex}
-                  onClick={() => {
-                    if (i !== currentFrameIndex) {
-                      saveWorkingPixelsToFrame();
-                      setCurrentFrameIndex(i);
-                    }
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Latest animations component */}
-            <div>
-              <LatestAnimations
-                animations={undefined}
-                onAnimationSelect={() => {
-                  // placeholder handler
-                }}
-                onMenuClick={() => {
-                  // placeholder handler
-                }}
+            {/* Canvas Area */}
+            <div className="w-full bg-black border-2 border-neutral-800 rounded-lg overflow-hidden mb-6 p-6 flex items-center justify-center">
+              <PixelCanvas
+                pixels={displayPixels}
+                onPixelsChange={playing ? () => {} : updateCurrentFramePixels}
+                brushSize={brushSize}
+                brushMode={brushMode}
+                brushShape={brushShape}
+                activeTool={activeTool}
+                onionSkin={getOnionSkin()}
+                cellSize={14}
+                showGrid={true}
               />
+            </div>
+
+            {/* Frame Timeline */}
+            <div className="flex items-center gap-2 mb-4">
+              <button
+                onClick={() => scroll('left')}
+                disabled={!canScrollLeft}
+                className={`shrink-0 p-1.5 rounded-lg transition-colors ${
+                  canScrollLeft
+                    ? 'bg-neutral-800 hover:bg-neutral-700 text-white'
+                    : 'bg-neutral-900 text-neutral-600 cursor-not-allowed'
+                }`}
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              <div
+                ref={scrollContainerRef}
+                className="flex-1 overflow-x-auto scrollbar-hide flex gap-2"
+                style={{ scrollBehavior: 'smooth' }}
+              >
+                {frames.map((frame, i) => (
+                  <div key={i} className="flex items-center shrink-0">
+                    <FrameThumbnail
+                      frame={frame}
+                      index={i}
+                      isActive={i === currentFrameIndex}
+                      onClick={() => {
+                        if (i !== currentFrameIndex) {
+                          saveWorkingPixelsToFrame();
+                          setCurrentFrameIndex(i);
+                        }
+                      }}
+                    />
+                    {i < frames.length - 1 && (
+                      <div className="flex flex-col gap-0.5 mx-1.5 shrink-0">
+                        <div className="w-0.5 h-1 bg-neutral-800"></div>
+                        <div className="w-0.5 h-1 bg-neutral-800"></div>
+                        <div className="w-0.5 h-1 bg-neutral-800"></div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => scroll('right')}
+                disabled={!canScrollRight}
+                className={`shrink-0 p-1.5 rounded-lg transition-colors ${
+                  canScrollRight
+                    ? 'bg-neutral-800 hover:bg-neutral-700 text-white'
+                    : 'bg-neutral-900 text-neutral-600 cursor-not-allowed'
+                }`}
+              >
+                <ChevronRight size={18} />
+              </button>
             </div>
           </div>
 
-          {/* Right control panel */}
-          <aside className="col-span-4">
-            <ControlPanel
-              projectName={projectName}
-              onProjectNameChange={setProjectName}
-              size={brushSize}
-              onSizeChange={setBrushSize}
-              brushType={brushShape}
-              onBrushTypeChange={setBrushShape}
-              onionSlicer={onionEnabled}
-              onOnionSlicerChange={setOnionEnabled}
-              frameDuration={frameDurationSeconds}
-              onFrameDurationChange={updateFrameDuration}
-              onPlay={togglePlayPause}
-              isPlaying={playing}
-              onCreateNew={() => {
-                if (!confirm('Are you sure you want to create a new animation? Any unsaved changes will be lost.')) {
-                  return;
-                }
-                setFrames([{ dur: 1000, arr: new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false) }]);
-                setCurrentFrameIndex(0);
-                setProjectName("Untitled");
-                setFrameDurationSeconds(1);
-                setWorkingPixels(new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false));
-                setHistory([]);
-                setHistoryIndex(-1);
-              }}
-              onSave={() => {
-                if (!confirm(`Are you sure you want to save "${projectName}"?`)) {
-                  return;
-                }
-                // Save working pixels before saving
-                saveWorkingPixelsToFrame();
-                console.log("Save animation:", { name: projectName, frames });
-                alert('Animation saved successfully!');
-              }}
-              onAddFrame={addFrame}
-              onDuplicate={duplicateFrame}
-              onRemoveFrame={deleteFrame}
-              onNextFrame={nextFrame}
-              onPrevFrame={prevFrame}
-              currentFrame={currentFrameIndex}
-              totalFrames={frames.length}
+          {/* Control Panel - fixed width */}
+          <div className="w-60 shrink-0 bg-background pt-4 pl-3 space-y-4">
+            {/* Project Name */}
+            <input
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              className="w-full bg-background border-2 border-neutral-700 rounded-lg px-3 py-2 text-neutral-400 placeholder-neutral-600 focus:outline-none focus:border-neutral-500 text-center text-xs"
+              placeholder="Untitled"
             />
-          </aside>
+
+            {/* Create New and Save */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (!confirm('Are you sure you want to create a new animation? Any unsaved changes will be lost.')) {
+                    return;
+                  }
+                  setFrames([{ dur: 1000, arr: new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false) }]);
+                  setCurrentFrameIndex(0);
+                  setProjectName("Untitled");
+                  setFrameDurationSeconds(1);
+                  setWorkingPixels(new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false));
+                  setHistory([]);
+                  setHistoryIndex(-1);
+                }}
+                className="flex-1 bg-background border-2 border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors text-xs"
+              >
+                Create New
+              </button>
+              <button
+                onClick={() => {
+                  if (!confirm(`Are you sure you want to save "${projectName}"?`)) {
+                    return;
+                  }
+                  saveWorkingPixelsToFrame();
+                  console.log("Save animation:", { name: projectName, frames });
+                  alert('Animation saved successfully!');
+                }}
+                className="flex-1 bg-background border-2 border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center gap-1 text-xs"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v6m0 0h16m-16 0v-6m16 6v-6m0 0V4" />
+                </svg>
+                Save
+              </button>
+            </div>
+
+            {/* Play Button */}
+            <button
+              onClick={togglePlayPause}
+              className="w-full bg-background border-2 border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center gap-1 text-xs"
+            >
+              {playing ? 'Pause' : 'Play'}
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                {playing ? (
+                  <>
+                    <rect x="6" y="4" width="4" height="16" />
+                    <rect x="14" y="4" width="4" height="16" />
+                  </>
+                ) : (
+                  <polygon points="5 3 19 12 5 21" />
+                )}
+              </svg>
+            </button>
+
+            {/* Add Frame and Duplicate */}
+            <div className="flex gap-2">
+              <button
+                onClick={addFrame}
+                className="flex-1 bg-background border-2 border-neutral-700 rounded-lg px-2 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center gap-1 text-xs"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Frame
+              </button>
+              <button
+                onClick={duplicateFrame}
+                className="flex-1 bg-background border-2 border-neutral-700 rounded-lg px-2 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center gap-1 text-xs"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Duplicate
+              </button>
+            </div>
+
+            {/* Size Slider */}
+            <div className="space-y-1.5">
+              <label className="block text-neutral-300 text-xs font-medium">Size</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="1"
+                  max="8"
+                  value={brushSize}
+                  onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                  className="flex-1 h-1 bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-white"
+                />
+                <span className="text-neutral-300 text-xs w-4">{brushSize}</span>
+              </div>
+            </div>
+
+            {/* Brush Type */}
+            <div className="space-y-2">
+              <label className="block text-neutral-300 text-xs font-medium">Brush Type</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  onClick={() => setBrushShape('square')}
+                  className={`aspect-square rounded-lg border-2 transition-colors ${
+                    brushShape === 'square'
+                      ? 'border-neutral-400 bg-neutral-900'
+                      : 'border-neutral-700 bg-black hover:border-neutral-600'
+                  } flex items-center justify-center`}
+                >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="white">
+                    <rect x="6" y="6" width="12" height="12" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setBrushShape('circle')}
+                  className={`aspect-square rounded-lg border-2 transition-colors ${
+                    brushShape === 'circle'
+                      ? 'border-neutral-400 bg-neutral-900'
+                      : 'border-neutral-700 bg-black hover:border-neutral-600'
+                  } flex items-center justify-center`}
+                >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="white">
+                    <circle cx="12" cy="12" r="6" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setBrushShape('triangle')}
+                  className={`aspect-square rounded-lg border-2 transition-colors ${
+                    brushShape === 'triangle'
+                      ? 'border-neutral-400 bg-neutral-900'
+                      : 'border-neutral-700 bg-black hover:border-neutral-600'
+                  } flex items-center justify-center`}
+                >
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="white">
+                    <polygon points="12,6 18,18 6,18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Onion Skin */}
+            <div className="flex items-center justify-between">
+              <label className="text-neutral-300 text-xs font-medium">Onion Skin</label>
+              <input
+                type="checkbox"
+                checked={onionEnabled}
+                onChange={(e) => setOnionEnabled(e.target.checked)}
+                className="w-4 h-4 rounded bg-background border-2 border-neutral-600 cursor-pointer accent-white"
+              />
+            </div>
+
+            {/* Frame Info */}
+            <div className="text-center text-neutral-300 text-sm py-2">
+              Frame {currentFrameIndex + 1} / {frames.length}
+            </div>
+
+            {/* Next/Prev Frame */}
+            <div className="flex gap-2">
+              <button 
+                onClick={prevFrame}
+                className="flex-1 bg-background border-2 border-neutral-700 rounded-lg px-2 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center gap-1 text-xs"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Prev
+              </button>
+              <button 
+                onClick={nextFrame}
+                className="flex-1 bg-background border-2 border-neutral-700 rounded-lg px-2 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center gap-1 text-xs"
+              >
+                Next
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Frame Duration */}
+            <div className="flex items-center justify-between">
+              <label className="text-neutral-300 text-xs font-medium">Frame Duration</label>
+              <div className="flex items-center bg-background border-2 border-neutral-700 rounded-lg px-2 py-1">
+                <input
+                  type="number"
+                  value={frameDurationSeconds}
+                  onChange={(e) => updateFrameDuration(parseFloat(e.target.value) || 0.1)}
+                  min="0.1"
+                  max="10"
+                  step="0.1"
+                  className="w-14 bg-transparent text-neutral-300 text-xs focus:outline-none text-right"
+                />
+                <span className="text-neutral-500 text-xs ml-1">sec</span>
+              </div>
+            </div>
+
+            {/* Remove Frame */}
+            <button
+              onClick={deleteFrame}
+              className="w-full bg-background border-2 border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center gap-1 text-xs"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3H4a1 1 0 000 2h1.05L5 19a3 3 0 003 3h8a3 3 0 003-3l.95-12H20a1 1 0 100-2h-3z" />
+              </svg>
+              Remove Frame
+            </button>
+          </div>
+        </div>
+
+        {/* Latest Animations at bottom */}
+        <div className="shrink-0 border-t border-border bg-background">
+          <LatestAnimations
+            onAnimationSelect={(id) => console.log('Selected animation:', id)}
+            onMenuClick={(id) => console.log('Menu clicked:', id)}
+          />
         </div>
       </main>
+
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }

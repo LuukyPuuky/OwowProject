@@ -81,15 +81,19 @@ export function PixelCanvas({
 
     // Draw grid
     if (showGrid) {
-      ctx.strokeStyle = '#323232';
-      ctx.lineWidth = 0.5;
-      for (let x = 0; x <= CANVAS_WIDTH; x++) {
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 1;
+      
+      // Draw vertical lines
+      for (let x = 1; x < CANVAS_WIDTH; x++) {
         ctx.beginPath();
         ctx.moveTo(x * cellSize, 0);
         ctx.lineTo(x * cellSize, CANVAS_HEIGHT * cellSize);
         ctx.stroke();
       }
-      for (let y = 0; y <= CANVAS_HEIGHT; y++) {
+      
+      // Draw horizontal lines
+      for (let y = 1; y < CANVAS_HEIGHT; y++) {
         ctx.beginPath();
         ctx.moveTo(0, y * cellSize);
         ctx.lineTo(CANVAS_WIDTH * cellSize, y * cellSize);
@@ -325,6 +329,8 @@ export function PixelCanvas({
       className="cursor-crosshair select-none"
       style={{
         imageRendering: 'pixelated',
+        width: `${CANVAS_WIDTH * cellSize}px`,
+        height: `${CANVAS_HEIGHT * cellSize}px`,
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
