@@ -103,7 +103,14 @@ const display = new Display({
         type: "ip",
         host: "127.0.0.1",
         port: 3000,
+        port: 4000,
       },
+    
+});
+
+// Start server on different port (4000)
+  server.listen(4000, () => {
+  console.log("Server running on http://localhost:4000");
 });
 
 const { width, height } = display;

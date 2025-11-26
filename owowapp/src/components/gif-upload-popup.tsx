@@ -57,7 +57,7 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
     for (let i = 0; i < selectedFiles.length; i++) fd.append("images", selectedFiles[i])
 
     // server upload endpoint 
-    const uploadUrl = "http://localhost:3000/upload"
+    const uploadUrl = "http://localhost:4000/upload"
 
     try {
       const res = await fetch(uploadUrl, {
