@@ -6,7 +6,6 @@ import {
   ChevronUp,
   ChevronDown,
   Star,
-  MoreVertical,
   X,
 } from "lucide-react";
 import { Input } from "../components/ui/input";

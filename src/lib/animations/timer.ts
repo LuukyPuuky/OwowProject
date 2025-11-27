@@ -7,7 +7,7 @@ export const timerMetadata = {
   status: "Available" as const,
 };
 
-export const timerAnimation: AnimationRenderer = (ctx, frame, config) => {
+export const timerAnimation: AnimationRenderer = (ctx, frame) => {
   const { elapsedTime } = frame;
   const text = (elapsedTime / 1000).toFixed(2);
 
@@ -16,6 +16,6 @@ export const timerAnimation: AnimationRenderer = (ctx, frame, config) => {
   ctx.fillStyle = "#fff";
   ctx.font = "14px monospace";
 
-  const metrics = ctx.measureText(text);
+  // Removed unused variable 'metrics'
   ctx.fillText(text, 2, 2);
 };
