@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import CanvasTimeline from '@/components/CanvasTimeline'
 import ControlPanel from '@/components/ControlPanel'
+import AIChat from '@/components/ai-chat'
+import AnimationPreview from '@/components/animation-preview'
 import { TopBar as Header } from '@/components/top-bar'
 import { Sidebar } from '@/components/sidebar'
 import LatestAnimations from '@/components/LatestAnimations'
@@ -11,6 +13,8 @@ export default function Page() {
   const [frames, setFrames] = useState([{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }])
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const favorites = new Set<string>()
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewFrames, setPreviewFrames] = useState<any[]>([])
 
   const addFrame = () => {
     setFrames([...frames, { id: frames.length + 1 }])
@@ -33,7 +37,7 @@ export default function Page() {
   }
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className="relative flex h-screen bg-background text-foreground">
       <Sidebar
         searchQuery={""}
         onSearchChange={() => {}}
@@ -42,6 +46,18 @@ export default function Page() {
         favorites={favorites}
         onRemoveFavorite={() => {}}
       />
+
+      {/* AI chat overlay positioned above the side menu */}
+      <div className="absolute left-0 top-16 z-50 pointer-events-auto">
+        <AIChat onGenerate={(generated) => {
+          const normalized = generated.map((g, i) => ({ id: i + 1, pixels: (g as any).pixels ?? (g as any) }))
+          setFrames(normalized as any)
+          setCurrentFrame(0)
+          // open preview modal and show generated frames scaled up
+          setPreviewFrames(normalized.map((f) => (f as any).pixels ?? f))
+          setPreviewOpen(true)
+        }} />
+      </div>
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-shrink-0">
@@ -54,8 +70,8 @@ export default function Page() {
             <CanvasTimeline frames={frames} currentFrame={currentFrame} onFrameSelect={setCurrentFrame} />
           </div>
 
-          {/* Sidebar on the right - fixed width */}
-          <div className="w-60 flex-shrink-0 bg-background">
+          {/* Sidebar on the right - fixed width; control panel + AI chat */}
+          <div className="w-60 flex-shrink-0 bg-background flex flex-col gap-3 p-3">
             <ControlPanel
               onPlay={() => console.log('Playing')}
               onCreateNew={() => {
@@ -67,6 +83,7 @@ export default function Page() {
               onDuplicate={duplicateFrame}
               onRemoveFrame={removeFrame}
             />
+            {/* AIChat removed from right sidebar — now shows as an overlay above the left sidebar */}
           </div>
         </div>
 
@@ -77,6 +94,7 @@ export default function Page() {
           />
         </div>
       </main>
+      <AnimationPreview open={previewOpen} onClose={() => setPreviewOpen(false)} frames={previewFrames} />
     </div>
   )
 }
