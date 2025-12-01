@@ -4,9 +4,11 @@ import { Sidebar } from "@/components/sidebar";
 import { PixelCanvas } from "@/components/pixel-canvas";
 import { TopBar as Header } from "@/components/top-bar";
 import LatestAnimations from "@/components/latest-animations";
+import { Modal } from "@/components/ui/modal";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/lib/canvas-utils";
 import type { Frame, BrushMode, BrushShape, Tool } from "@/lib/types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { animations } from "@/lib/animations";
 
 // Memoized thumbnail component
 const FrameThumbnail = memo<{
@@ -65,6 +67,16 @@ export default function CreatePage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const favorites = new Set<string>();
 
+  // Custom animations state for sidebar preview
+  const [customAnimations, setCustomAnimations] = useState<Array<{
+    id: string;
+    name: string;
+    frames: Array<{ dur: number; arr: boolean[] }>;
+    createdAt: string;
+    status: string;
+  }>>([]);
+  const [equippedId, setEquippedId] = useState<string>("logo");
+
   // Frame & Animation State
   const [frames, setFrames] = useState<Frame[]>([
     { dur: 1000, arr: new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false) }
@@ -92,10 +104,79 @@ export default function CreatePage() {
   // Project State
   const [projectName, setProjectName] = useState("Untitled");
   const [frameDurationSeconds, setFrameDurationSeconds] = useState(1);
+  const [lastSavedState, setLastSavedState] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // History
   const [history, setHistory] = useState<Frame[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "alert" | "confirm";
+    onConfirm?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    showDontShowAgain?: boolean;
+    dialogId?: string;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "alert",
+  });
+
+  // Track which dialogs should be skipped
+  const [skipDialogs, setSkipDialogs] = useState<Set<string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('skipDialogs');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    }
+    return new Set();
+  });
+
+  const showAlert = useCallback((title: string, message: string) => {
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type: "alert",
+    });
+  }, []);
+
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void, dialogId?: string) => {
+    // Check if this dialog should be skipped
+    if (dialogId && skipDialogs.has(dialogId)) {
+      onConfirm();
+      return;
+    }
+
+    setModalConfig({
+      isOpen: true,
+      title,
+      message,
+      type: "confirm",
+      onConfirm,
+      showDontShowAgain: !!dialogId,
+      dialogId,
+    });
+  }, [skipDialogs]);
+
+  const closeModal = useCallback(() => {
+    setModalConfig((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const handleDontShowAgain = useCallback((checked: boolean) => {
+    if (checked && modalConfig.dialogId) {
+      const newSkipDialogs = new Set(skipDialogs);
+      newSkipDialogs.add(modalConfig.dialogId);
+      setSkipDialogs(newSkipDialogs);
+      localStorage.setItem('skipDialogs', JSON.stringify([...newSkipDialogs]));
+    }
+  }, [modalConfig.dialogId, skipDialogs]);
 
   // Timeline scroll
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -122,6 +203,54 @@ export default function CreatePage() {
       window.removeEventListener('resize', checkScroll);
     };
   }, [frames.length]);
+
+  // Load custom animations and equipped animation for sidebar preview
+  useEffect(() => {
+    const loadData = () => {
+      try {
+        // Load custom animations
+        const saved = localStorage.getItem('customAnimations');
+        if (saved) {
+          setCustomAnimations(JSON.parse(saved));
+        }
+        
+        // Load equipped animation ID
+        const savedEquipped = localStorage.getItem('equippedAnimationId');
+        if (savedEquipped) {
+          setEquippedId(savedEquipped);
+        }
+      } catch (error) {
+        console.error('Failed to load data:', error);
+      }
+    };
+    
+    loadData();
+    
+    // Listen for changes
+    const handleStorageChange = () => {
+      loadData();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('customAnimationsUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('customAnimationsUpdated', handleStorageChange);
+    };
+  }, []);
+
+  // Track changes to detect unsaved work
+  useEffect(() => {
+    const currentState = JSON.stringify({ frames, projectName });
+    if (lastSavedState === "") {
+      // Initial state - no changes yet
+      setLastSavedState(currentState);
+      setHasUnsavedChanges(false);
+    } else {
+      setHasUnsavedChanges(currentState !== lastSavedState);
+    }
+  }, [frames, projectName, lastSavedState]);
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
@@ -193,20 +322,24 @@ export default function CreatePage() {
 
   const deleteFrame = useCallback(() => {
     if (frames.length === 1) {
-      alert('Cannot delete the last frame!');
+      showAlert('Cannot Delete', 'Cannot delete the last frame!');
       return;
     }
-    if (!confirm(`Are you sure you want to delete frame ${currentFrameIndex + 1}?`)) {
-      return;
-    }
-    pushHistory();
-    const newFrames = frames.filter((_, i) => i !== currentFrameIndex);
-    setFrames(newFrames);
-    const newIndex = Math.min(currentFrameIndex, newFrames.length - 1);
-    setCurrentFrameIndex(newIndex);
-    setWorkingPixels([...newFrames[newIndex].arr]);
-    setFrameDurationSeconds(newFrames[newIndex].dur / 1000);
-  }, [frames, currentFrameIndex, pushHistory]);
+    showConfirm(
+      'Delete Frame',
+      `Are you sure you want to delete frame ${currentFrameIndex + 1}?`,
+      () => {
+        pushHistory();
+        const newFrames = frames.filter((_, i) => i !== currentFrameIndex);
+        setFrames(newFrames);
+        const newIndex = Math.min(currentFrameIndex, newFrames.length - 1);
+        setCurrentFrameIndex(newIndex);
+        setWorkingPixels([...newFrames[newIndex].arr]);
+        setFrameDurationSeconds(newFrames[newIndex].dur / 1000);
+      },
+      'deleteFrame'
+    );
+  }, [frames, currentFrameIndex, pushHistory, showAlert, showConfirm]);
 
   const nextFrame = useCallback(() => {
     saveWorkingPixelsToFrame();
@@ -282,11 +415,76 @@ export default function CreatePage() {
     return prevFrame ? prevFrame.arr : undefined;
   }, [onionEnabled, currentFrameIndex, frames]);
 
+  const loadAnimationForEditing = useCallback((animationId: string, animationFrames?: Array<{ dur: number; arr: boolean[] }>) => {
+    if (!animationFrames || animationFrames.length === 0) {
+      showAlert('No Frames', 'No frames found for this animation');
+      return;
+    }
+
+    const doLoad = () => {
+      // Load the animation
+      const savedAnimations = JSON.parse(localStorage.getItem('customAnimations') || '[]');
+      const animation = savedAnimations.find((a: { id: string }) => a.id === animationId);
+      
+      if (animation) {
+        setProjectName(animation.name);
+        setFrames(animationFrames);
+        setCurrentFrameIndex(0);
+        setWorkingPixels([...animationFrames[0].arr]);
+        setFrameDurationSeconds(animationFrames[0].dur / 1000);
+        setHistory([]);
+        setHistoryIndex(-1);
+        // Mark as saved since we just loaded it
+        setLastSavedState(JSON.stringify({ frames: animationFrames, projectName: animation.name }));
+        setHasUnsavedChanges(false);
+        showAlert('Animation Loaded', `Loaded "${animation.name}" for editing`);
+      }
+    };
+
+    // Only warn if there are actual unsaved changes
+    if (hasUnsavedChanges) {
+      showConfirm(
+        'Unsaved Changes',
+        'Your work isn\'t saved. Are you sure you want to continue?',
+        doLoad,
+        'loadAnimation'
+      );
+    } else {
+      doLoad();
+    }
+  }, [hasUnsavedChanges, showAlert, showConfirm]);
+
   useEffect(() => {
     return () => {
       if (playTimerRef.current) clearTimeout(playTimerRef.current);
     };
   }, []);
+
+  // Calculate equipped animation metadata for sidebar
+  const equippedAnimation = useMemo(() => {
+    // Check if it's a custom animation first
+    const customAnim = customAnimations.find(c => c.id === equippedId);
+    if (customAnim) {
+      return {
+        id: customAnim.id,
+        name: customAnim.name,
+        description: `Custom animation created on ${new Date(customAnim.createdAt).toLocaleDateString()}`,
+        status: customAnim.status as "Available" | "Equiped",
+      };
+    }
+    
+    // Otherwise check built-in animations
+    const anim = Object.values(animations).find(
+      (a) => a.metadata.id === equippedId
+    );
+    return anim?.metadata;
+  }, [equippedId, customAnimations]);
+
+  // Get custom frames for equipped animation if it's custom
+  const equippedCustomFrames = useMemo(() => {
+    const customAnim = customAnimations.find(c => c.id === equippedId);
+    return customAnim?.frames;
+  }, [equippedId, customAnimations]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -339,6 +537,9 @@ export default function CreatePage() {
         onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         favorites={favorites}
         onRemoveFavorite={() => {}}
+        equippedAnimation={equippedAnimation}
+        equippedCustomFrames={equippedCustomFrames}
+        customAnimations={customAnimations}
       />
 
       <main className="flex-1 flex flex-col overflow-hidden">
@@ -524,28 +725,53 @@ export default function CreatePage() {
           {/* Control Panel - fixed width */}
           <div className="w-60 shrink-0 bg-background pt-4 pl-3 space-y-4">
             {/* Project Name */}
-            <input
-              type="text"
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              className="w-full bg-background border-2 border-neutral-700 rounded-lg px-3 py-2 text-neutral-400 placeholder-neutral-600 focus:outline-none focus:border-neutral-500 text-center text-xs"
-              placeholder="Untitled"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                className="w-full bg-background border-2 border-neutral-700 rounded-lg px-3 py-2 text-neutral-400 placeholder-neutral-600 focus:outline-none focus:border-neutral-500 text-center text-xs"
+                placeholder="Untitled"
+              />
+              {hasUnsavedChanges && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-yellow-500 text-xs font-bold" title="Unsaved changes">
+                  *
+                </div>
+              )}
+            </div>
 
             {/* Create New and Save */}
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  if (!confirm('Are you sure you want to create a new animation? Any unsaved changes will be lost.')) {
-                    return;
+                  const doCreateNew = () => {
+                    setFrames([{ dur: 1000, arr: new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false) }]);
+                    setCurrentFrameIndex(0);
+                    setProjectName("Untitled");
+                    setFrameDurationSeconds(1);
+                    setWorkingPixels(new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false));
+                    setHistory([]);
+                    setHistoryIndex(-1);
+                    // Reset saved state
+                    const newState = JSON.stringify({ 
+                      frames: [{ dur: 1000, arr: new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false) }], 
+                      projectName: "Untitled" 
+                    });
+                    setLastSavedState(newState);
+                    setHasUnsavedChanges(false);
+                  };
+
+                  // Only warn if there are unsaved changes
+                  if (hasUnsavedChanges) {
+                    showConfirm(
+                      'Unsaved Changes',
+                      'Your work isn\'t saved. Are you sure you want to continue?',
+                      doCreateNew,
+                      'createNew'
+                    );
+                  } else {
+                    doCreateNew();
                   }
-                  setFrames([{ dur: 1000, arr: new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false) }]);
-                  setCurrentFrameIndex(0);
-                  setProjectName("Untitled");
-                  setFrameDurationSeconds(1);
-                  setWorkingPixels(new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false));
-                  setHistory([]);
-                  setHistoryIndex(-1);
                 }}
                 className="flex-1 bg-background border-2 border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors text-xs"
               >
@@ -554,43 +780,55 @@ export default function CreatePage() {
               <button
                 onClick={async () => {
                   if (!projectName || projectName.trim() === "" || projectName === "Untitled") {
-                    alert('Please enter a valid project name!');
+                    showAlert('Invalid Name', 'Please enter a valid project name!');
                     return;
                   }
-                  if (!confirm(`Are you sure you want to save "${projectName}"?`)) {
-                    return;
-                  }
-                  saveWorkingPixelsToFrame();
                   
-                  try {
-                    // Save to localStorage
-                    const savedAnimations = JSON.parse(localStorage.getItem('customAnimations') || '[]');
-                    const animationData = {
-                      id: `custom-${Date.now()}`,
-                      name: projectName,
-                      frames: frames,
-                      createdAt: new Date().toISOString(),
-                      status: 'Custom'
-                    };
-                    
-                    // Check if animation with same name exists
-                    const existingIndex = savedAnimations.findIndex((a: { name: string }) => a.name === projectName);
-                    if (existingIndex >= 0) {
-                      savedAnimations[existingIndex] = animationData;
-                    } else {
-                      savedAnimations.push(animationData);
+                  const doSave = async () => {
+                    saveWorkingPixelsToFrame();
+                  
+                    try {
+                      // Save to localStorage
+                      const savedAnimations = JSON.parse(localStorage.getItem('customAnimations') || '[]');
+                      const animationData = {
+                        id: `custom-${Date.now()}`,
+                        name: projectName,
+                        frames: frames,
+                        createdAt: new Date().toISOString(),
+                        status: 'Custom'
+                      };
+                      
+                      // Check if animation with same name exists
+                      const existingIndex = savedAnimations.findIndex((a: { name: string }) => a.name === projectName);
+                      if (existingIndex >= 0) {
+                        savedAnimations[existingIndex] = animationData;
+                      } else {
+                        savedAnimations.push(animationData);
+                      }
+                      
+                      localStorage.setItem('customAnimations', JSON.stringify(savedAnimations));
+                      
+                      // Trigger event to update library
+                      window.dispatchEvent(new Event('customAnimationsUpdated'));
+                      
+                      // Mark as saved
+                      const savedState = JSON.stringify({ frames, projectName });
+                      setLastSavedState(savedState);
+                      setHasUnsavedChanges(false);
+                      
+                      showAlert('Success', 'Animation saved successfully! Go to Library to see it.');
+                    } catch (error) {
+                      console.error('Failed to save animation:', error);
+                      showAlert('Error', 'Failed to save animation. Please try again.');
                     }
-                    
-                    localStorage.setItem('customAnimations', JSON.stringify(savedAnimations));
-                    
-                    // Trigger event to update library
-                    window.dispatchEvent(new Event('customAnimationsUpdated'));
-                    
-                    alert('Animation saved successfully! Go to Library to see it.');
-                  } catch (error) {
-                    console.error('Failed to save animation:', error);
-                    alert('Failed to save animation. Please try again.');
-                  }
+                  };
+
+                  showConfirm(
+                    'Save Animation',
+                    `Are you sure you want to save "${projectName}"?`,
+                    doSave,
+                    'saveAnimation'
+                  );
                 }}
                 className="flex-1 bg-background border-2 border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center gap-1 text-xs"
               >
@@ -765,13 +1003,31 @@ export default function CreatePage() {
               </svg>
               Remove Frame
             </button>
+
+            {/* Reset Dialog Preferences */}
+            {skipDialogs.size > 0 && (
+              <button
+                onClick={() => {
+                  setSkipDialogs(new Set());
+                  localStorage.removeItem('skipDialogs');
+                  showAlert('Preferences Reset', 'All "Don\'t show again" preferences have been reset.');
+                }}
+                className="w-full bg-background border-2 border-neutral-700 rounded-lg px-3 py-1.5 text-neutral-400 hover:border-neutral-500 hover:text-neutral-300 transition-colors flex items-center justify-center gap-1 text-xs"
+                title="Reset all 'Don't show again' preferences"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reset Dialogs
+              </button>
+            )}
           </div>
         </div>
 
         {/* Latest Animations at bottom */}
         <div className="shrink-0 border-t border-border bg-background">
           <LatestAnimations
-            onAnimationSelect={(id) => console.log('Selected animation:', id)}
+            onAnimationSelect={loadAnimationForEditing}
             onMenuClick={(id) => console.log('Menu clicked:', id)}
           />
         </div>
@@ -786,6 +1042,20 @@ export default function CreatePage() {
           scrollbar-width: none;
         }
       `}</style>
+
+      {/* Modal */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={closeModal}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.confirmText}
+        cancelText={modalConfig.cancelText}
+        showDontShowAgain={modalConfig.showDontShowAgain}
+        onDontShowAgain={handleDontShowAgain}
+      />
     </div>
   );
 }

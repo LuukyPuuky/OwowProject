@@ -17,6 +17,7 @@ interface AnimationCardProps {
   status: string;
   animationType?: string;
   customFrames?: Array<{ dur: number; arr: boolean[] }>;
+  thumbnail?: string | boolean[];
   isFavorite?: boolean;
   onDelete: (id: string) => void;
   onFavorite: (id: string) => void;
@@ -29,6 +30,7 @@ export function AnimationCard({
   title,
   animationType,
   customFrames,
+  thumbnail,
   onDelete,
   onFavorite,
   isEquipped,
@@ -102,6 +104,7 @@ export function AnimationCard({
             animationType={customFrames ? undefined : (animationType || id || "1")}
             customFrames={customFrames}
             autoRefresh={isEquipped || isHovered}
+            staticFrame={(!isEquipped && !isHovered && thumbnail && Array.isArray(thumbnail)) ? thumbnail : undefined}
           />
         </div>
 

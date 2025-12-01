@@ -11,7 +11,15 @@ export function AnimationLibrary() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
-  const [equippedId, setEquippedId] = useState<string>("logo");
+  const [equippedId, setEquippedId] = useState<string>(() => {
+    // Load equipped ID from localStorage on mount
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('equippedAnimationId') || "logo";
+    }
+    return "logo";
+  });
+  const [sortBy, setSortBy] = useState("Name");
+  const [filterBy, setFilterBy] = useState("All");
   const [customAnimations, setCustomAnimations] = useState<Array<{
     id: string;
     name: string;
@@ -91,6 +99,8 @@ export function AnimationLibrary() {
 
   const handleEquip = (id: string) => {
     setEquippedId(id);
+    // Save to localStorage so other pages can see it
+    localStorage.setItem('equippedAnimationId', id);
   };
 
   const equippedAnimation = useMemo(() => {
@@ -129,10 +139,15 @@ export function AnimationLibrary() {
         onRemoveFavorite={handleAddFavorite}
         equippedAnimation={equippedAnimation}
         equippedCustomFrames={equippedCustomFrames}
+        customAnimations={customAnimations}
       />
       <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar
           onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          filterBy={filterBy}
+          onFilterChange={setFilterBy}
         />
         <AnimationGrid
           searchQuery={searchQuery}
@@ -144,6 +159,8 @@ export function AnimationLibrary() {
           equippedId={equippedId}
           onEquip={handleEquip}
           customAnimations={customAnimations}
+          sortBy={sortBy}
+          filterBy={filterBy}
         />
       </main>
     </div>

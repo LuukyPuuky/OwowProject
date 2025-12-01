@@ -1,85 +1,64 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { PixelDisplay } from './pixel-display';
 
 interface Animation {
   id: string;
   title: string;
-  preview: React.ReactNode;
+  preview?: React.ReactNode;
   equipped: boolean;
+  frames?: Array<{ dur: number; arr: boolean[] }>;
 }
 
 interface LatestAnimationsProps {
-  animations?: Animation[];
-  onAnimationSelect?: (id: string) => void;
+  onAnimationSelect?: (id: string, frames?: Array<{ dur: number; arr: boolean[] }>) => void;
   onMenuClick?: (id: string) => void;
 }
 
 export default function LatestAnimations({
-  animations,
   onAnimationSelect,
   onMenuClick,
 }: LatestAnimationsProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [latestAnimations, setLatestAnimations] = useState<Animation[]>([]);
 
-  // Default animations with star preview
-  const defaultAnimations: Animation[] = [
-    {
-      id: '1',
-      title: 'Star animation',
-      preview: (
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          <polygon
-            points="50,15 61,35 82,35 65,48 73,68 50,55 27,68 35,48 18,35 39,35"
-            fill="white"
-          />
-        </svg>
-      ),
-      equipped: true,
-    },
-    {
-      id: '2',
-      title: 'Star animation',
-      preview: (
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          <polygon
-            points="50,15 61,35 82,35 65,48 73,68 50,55 27,68 35,48 18,35 39,35"
-            fill="white"
-          />
-        </svg>
-      ),
-      equipped: false,
-    },
-    {
-      id: '3',
-      title: 'Star animation',
-      preview: (
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          <polygon
-            points="50,15 61,35 82,35 65,48 73,68 50,55 27,68 35,48 18,35 39,35"
-            fill="white"
-          />
-        </svg>
-      ),
-      equipped: false,
-    },
-    {
-      id: '4',
-      title: 'Star animation',
-      preview: (
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          <polygon
-            points="50,15 61,35 82,35 65,48 73,68 50,55 27,68 35,48 18,35 39,35"
-            fill="white"
-          />
-        </svg>
-      ),
-      equipped: false,
-    },
-  ];
+  // Load latest custom animations from localStorage
+  useEffect(() => {
+    const loadLatestAnimations = () => {
+      try {
+        const saved = localStorage.getItem('customAnimations');
+        if (saved) {
+          const allAnimations = JSON.parse(saved);
+          // Sort by creation date (newest first) and take latest 4
+          const sorted = allAnimations
+            .sort((a: { createdAt: string }, b: { createdAt: string }) => 
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            )
+            .slice(0, 4)
+            .map((anim: { id: string; name: string; frames: Array<{ dur: number; arr: boolean[] }> }) => ({
+              id: anim.id,
+              title: anim.name,
+              equipped: false,
+              frames: anim.frames
+            }));
+          setLatestAnimations(sorted);
+        }
+      } catch (error) {
+        console.error('Failed to load latest animations:', error);
+      }
+    };
 
-  const displayAnimations = animations || defaultAnimations;
+    loadLatestAnimations();
+
+    // Listen for updates
+    const handleUpdate = () => loadLatestAnimations();
+    window.addEventListener('customAnimationsUpdated', handleUpdate);
+    return () => window.removeEventListener('customAnimationsUpdated', handleUpdate);
+  }, []);
+
+  const displayAnimations = latestAnimations.length > 0 ? latestAnimations : [];
 
   return (
     <div className="w-full bg-background text-muted-foreground px-8 py-6">
@@ -104,55 +83,67 @@ export default function LatestAnimations({
 
       {/* Animations Grid - maintain fixed height to prevent layout shift */}
       <div 
-        className={`grid grid-cols-4 gap-6 transition-all duration-300 ${
+        className={`grid grid-cols-4 gap-4 transition-all duration-300 ${
           isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
         style={{ height: isCollapsed ? '0' : 'auto', overflow: 'hidden' }}
       >
-        {displayAnimations.map((animation) => (
-          <div
-            key={animation.id}
-            onClick={() => onAnimationSelect?.(animation.id)}
-            className="group cursor-pointer"
-          >
-            {/* Card Container - scaled down to match library style */}
-            <div className="border-3 border-border rounded-lg bg-card overflow-hidden group-hover:border-muted-foreground/50 transition-colors cursor-pointer">
-              <div className="p-3">
-                {/* Three Dot Menu */}
-                <div className="flex justify-end mb-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMenuClick?.(animation.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground text-sm"
-                  >
-                    •••
-                  </button>
-                </div>
-
-                {/* Preview Area (smaller) */}
-                <div className="aspect-video bg-black rounded-md flex items-center justify-center mb-3 overflow-hidden h-20">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="w-10 h-10">{animation.preview}</div>
+        {displayAnimations.length === 0 ? (
+          <div className="col-span-4 text-center text-neutral-500 py-8">
+            No custom animations yet. Create one to see it here!
+          </div>
+        ) : (
+          displayAnimations.map((animation) => (
+            <div
+              key={animation.id}
+              onClick={() => onAnimationSelect?.(animation.id, animation.frames)}
+              className="group cursor-pointer"
+            >
+              {/* Card Container */}
+              <div className="border-2 border-neutral-800 rounded-lg bg-card overflow-hidden group-hover:border-neutral-600 transition-colors cursor-pointer">
+                <div className="p-3">
+                  {/* Three Dot Menu */}
+                  <div className="flex justify-end mb-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMenuClick?.(animation.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground text-sm"
+                    >
+                      •••
+                    </button>
                   </div>
-                </div>
 
-                {/* Info Section */}
-                <div className="space-y-1">
-                  <h3 className="font-medium text-muted-foreground text-center text-sm">
-                    {animation.title}
-                  </h3>
-                  <div className="text-center">
-                    <span className="text-xs text-[#494949]">
-                      {animation.equipped ? 'Equipped' : 'Equip'}
-                    </span>
+                  {/* Preview Area - Fixed aspect ratio and centering */}
+                  <div className="bg-black rounded-md mb-3 overflow-hidden flex items-center justify-center" style={{ height: '80px' }}>
+                    {animation.frames ? (
+                      <PixelDisplay
+                        size="mini"
+                        customFrames={animation.frames}
+                        autoRefresh={true}
+                      />
+                    ) : (
+                      <div className="text-neutral-600 text-xs">No preview</div>
+                    )}
+                  </div>
+
+                  {/* Info Section */}
+                  <div className="space-y-1">
+                    <h3 className="font-medium text-muted-foreground text-center text-sm truncate">
+                      {animation.title}
+                    </h3>
+                    <div className="text-center">
+                      <span className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors">
+                        Click to edit
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );

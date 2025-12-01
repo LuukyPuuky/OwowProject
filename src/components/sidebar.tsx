@@ -23,6 +23,13 @@ interface SidebarProps {
   onRemoveFavorite: (id: string) => void;
   equippedAnimation?: AnimationMetadata;
   equippedCustomFrames?: Array<{ dur: number; arr: boolean[] }>;
+  customAnimations?: Array<{
+    id: string;
+    name: string;
+    frames: Array<{ dur: number; arr: boolean[] }>;
+    createdAt: string;
+    status: string;
+  }>;
 }
 
 export function Sidebar({
@@ -34,15 +41,28 @@ export function Sidebar({
   onRemoveFavorite,
   equippedAnimation,
   equippedCustomFrames,
+  customAnimations = [],
 }: SidebarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isFavouritesOpen, setIsFavouritesOpen] = useState(false);
 
-  // Get favorite animation objects
+  // Get favorite animation objects (including custom animations)
   const favoriteAnimations =
     favorites && favorites.size > 0
       ? Array.from(favorites)
           .map((id) => {
+            // Check if it's a custom animation first
+            const customAnim = customAnimations.find(c => c.id === id);
+            if (customAnim) {
+              return {
+                id: customAnim.id,
+                name: customAnim.name,
+                description: `Custom animation created on ${new Date(customAnim.createdAt).toLocaleDateString()}`,
+                status: customAnim.status as "Available" | "Equiped",
+              };
+            }
+            
+            // Otherwise check built-in animations
             const animationObject = Object.values(animations).find(
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (a: any) => a.metadata?.id === id
@@ -193,29 +213,36 @@ export function Sidebar({
                   </p>
                 ) : (
                   <div className="text-sm text-muted-foreground px-2 space-y-3">
-                    {favoriteAnimations.map((anim) => (
-                      <div
-                        key={anim.id}
-                        className="flex items-center justify-between border-2 p-4 rounded-xl hover:bg-accent/10 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="rounded overflow-hidden">
-                            <PixelDisplay
-                              size="mini"
-                              animationType={anim.id}
-                              autoRefresh={true}
-                            />
-                          </div>
-                          <p>{anim.name}</p>
-                        </div>
-                        <button
-                          onClick={() => onRemoveFavorite(anim.id)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
+                    {favoriteAnimations.map((anim) => {
+                      // Check if this is a custom animation
+                      const customAnim = customAnimations.find(c => c.id === anim.id);
+                      const customFrames = customAnim?.frames;
+                      
+                      return (
+                        <div
+                          key={anim.id}
+                          className="flex items-center justify-between border-2 p-4 rounded-xl hover:bg-accent/10 transition-colors"
                         >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2">
+                            <div className="rounded overflow-hidden">
+                              <PixelDisplay
+                                size="mini"
+                                animationType={customFrames ? undefined : anim.id}
+                                customFrames={customFrames}
+                                autoRefresh={true}
+                              />
+                            </div>
+                            <p>{anim.name}</p>
+                          </div>
+                          <button
+                            onClick={() => onRemoveFavorite(anim.id)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

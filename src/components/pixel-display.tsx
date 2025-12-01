@@ -8,6 +8,7 @@ interface PixelDisplayProps {
   autoRefresh?: boolean;
   animationType?: string;
   customFrames?: Array<{ dur: number; arr: boolean[] }>;
+  staticFrame?: boolean[];
   renderer?: (
     context: CanvasRenderingContext2D,
     width: number,
@@ -21,6 +22,7 @@ export function PixelDisplay({
   autoRefresh = true,
   animationType,
   customFrames,
+  staticFrame,
 }: PixelDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +37,29 @@ export function PixelDisplay({
   const height = 20;
 
   useEffect(() => {
+    // Handle static frame (thumbnail)
+    if (staticFrame && staticFrame.length > 0) {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
+
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+
+      // Convert boolean array to RGBA
+      for (let i = 0; i < staticFrame.length && i < width * height; i++) {
+        const pixelValue = staticFrame[i] ? 255 : 0;
+        const index = i * 4;
+        data[index] = pixelValue;     // R
+        data[index + 1] = pixelValue; // G
+        data[index + 2] = pixelValue; // B
+        data[index + 3] = 255;        // A
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return;
+    }
+
     if (!autoRefresh) {
       // Clear canvas if no animation
       const canvas = canvasRef.current;
@@ -185,7 +210,7 @@ export function PixelDisplay({
         });
       }
     };
-  }, [autoRefresh, animationType, customFrames]);
+  }, [autoRefresh, animationType, customFrames, staticFrame]);
 
   return (
     <div
