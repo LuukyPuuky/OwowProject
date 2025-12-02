@@ -1,4 +1,4 @@
-import { AnimationRenderer, CanvasContext } from "../display/types";
+import { AnimationRenderer } from "../display/types";
 
 export const pongMetadata = {
   id: "pong",

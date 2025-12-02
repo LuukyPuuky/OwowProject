@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     async start(controller) {
       let lastTime = Date.now();
       let elapsedTime = 0;
-      let intervalId: NodeJS.Timeout;
+        let intervalId: NodeJS.Timeout;
 
       const tick = async () => {
         try {

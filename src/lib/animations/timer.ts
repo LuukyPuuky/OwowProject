@@ -7,7 +7,7 @@ export const timerMetadata = {
   status: "Available" as const,
 };
 
-export const timerAnimation: AnimationRenderer = (ctx, frame, config) => {
+export const timerAnimation: AnimationRenderer = (ctx, frame) => {
   const { elapsedTime } = frame;
   const text = (elapsedTime / 1000).toFixed(2);
 
