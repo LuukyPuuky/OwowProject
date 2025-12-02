@@ -20,14 +20,14 @@ export const textScrollAnimation: AnimationRenderer = (ctx, frame, config) => {
 
   // Calculate scroll position
   const scrollSpeed = 0.05;
-  const spacing = 30; // Add space between text copies
+  const spacing = 30;
   const textWidth = ctx.measureText(text).width;
   const totalWidth = textWidth + spacing;
   const offset = (elapsedTime * scrollSpeed) % totalWidth;
 
   // Draw text scrolling from right to left
   const x = width - offset;
-  const y = (height - 16) / 2; // Center vertically
+  const y = (height - 16) / 2;
 
   // Draw multiple copies to ensure seamless infinite loop
   ctx.fillText(text, Math.floor(x), Math.floor(y));
