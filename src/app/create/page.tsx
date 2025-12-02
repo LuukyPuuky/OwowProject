@@ -101,6 +101,11 @@ export default function CreatePage() {
   const [brushSize, setBrushSize] = useState(2);
   const [onionEnabled, setOnionEnabled] = useState(false);
 
+  // Selection & Clipboard State
+  const [selection, setSelection] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+  const [clipboard, setClipboard] = useState<{ width: number; height: number; pixels: boolean[] } | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+
   // Project State
   const [projectName, setProjectName] = useState("Untitled");
   const [frameDurationSeconds, setFrameDurationSeconds] = useState(1);
@@ -486,6 +491,70 @@ export default function CreatePage() {
     return customAnim?.frames;
   }, [equippedId, customAnimations]);
 
+  // Copy selection to clipboard (only white pixels)
+  const copySelection = useCallback(() => {
+    if (!selection) return;
+
+    const minX = Math.min(selection.startX, selection.endX);
+    const maxX = Math.max(selection.startX, selection.endX);
+    const minY = Math.min(selection.startY, selection.endY);
+    const maxY = Math.max(selection.startY, selection.endY);
+    
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+    const pixels: boolean[] = [];
+
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const index = y * CANVAS_WIDTH + x;
+        // Only copy white pixels (true values)
+        pixels.push(workingPixels[index] === true);
+      }
+    }
+
+    setClipboard({ width, height, pixels });
+  }, [selection, workingPixels]);
+
+  // Paste clipboard at current selection start or center
+  const pasteClipboard = useCallback(() => {
+    if (!clipboard) return;
+
+    const pasteX = selection ? Math.min(selection.startX, selection.endX) : Math.floor((CANVAS_WIDTH - clipboard.width) / 2);
+    const pasteY = selection ? Math.min(selection.startY, selection.endY) : Math.floor((CANVAS_HEIGHT - clipboard.height) / 2);
+
+    const newPixels = [...workingPixels];
+
+    for (let dy = 0; dy < clipboard.height; dy++) {
+      for (let dx = 0; dx < clipboard.width; dx++) {
+        const targetX = pasteX + dx;
+        const targetY = pasteY + dy;
+        
+        if (targetX >= 0 && targetX < CANVAS_WIDTH && targetY >= 0 && targetY < CANVAS_HEIGHT) {
+          const sourceIndex = dy * clipboard.width + dx;
+          const targetIndex = targetY * CANVAS_WIDTH + targetX;
+          // Only paste white pixels (overwrite only if source pixel is true)
+          if (clipboard.pixels[sourceIndex]) {
+            newPixels[targetIndex] = true;
+          }
+        }
+      }
+    }
+
+    setWorkingPixels(newPixels);
+    pushHistory();
+    setSelection(null); // Clear selection after paste
+  }, [clipboard, selection, workingPixels, pushHistory]);
+
+  // Undo function
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const prevState = history[historyIndex - 1];
+      setFrames(prevState);
+      setHistoryIndex(historyIndex - 1);
+      setWorkingPixels([...prevState[currentFrameIndex].arr]);
+    }
+  }, [history, historyIndex, currentFrameIndex]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -493,6 +562,7 @@ export default function CreatePage() {
       }
       
       const key = e.key.toLowerCase();
+      const ctrlOrCmd = e.ctrlKey || e.metaKey;
       
       if (key === ' ') {
         e.preventDefault();
@@ -517,16 +587,35 @@ export default function CreatePage() {
         setActiveTool('rect');
       } else if (key === 'f') {
         setActiveTool('fill');
+      } else if (key === 's') {
+        setActiveTool('select');
       } else if (key === '[') {
         setBrushSize(prev => Math.max(1, prev - 1));
       } else if (key === ']') {
         setBrushSize(prev => Math.min(8, prev + 1));
+      } else if (ctrlOrCmd && key === 'c' && selection) {
+        e.preventDefault();
+        copySelection();
+      } else if (ctrlOrCmd && key === 'v' && clipboard) {
+        e.preventDefault();
+        pasteClipboard();
+      } else if (ctrlOrCmd && key === 'z') {
+        e.preventDefault();
+        // Undo: restore previous history state
+        if (historyIndex > 0) {
+          const prevState = history[historyIndex - 1];
+          setFrames(prevState);
+          setHistoryIndex(historyIndex - 1);
+          setWorkingPixels([...prevState[currentFrameIndex].arr]);
+        }
+      } else if (key === 'escape' && selection) {
+        setSelection(null);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlayPause, nextFrame, prevFrame]);
+  }, [togglePlayPause, nextFrame, prevFrame, selection, clipboard, copySelection, pasteClipboard, history, historyIndex, currentFrameIndex]);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -555,7 +644,7 @@ export default function CreatePage() {
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-neutral-300 text-sm font-medium">Tools</span>
                 <div className="flex-1 border-b border-neutral-800"></div>
-                <span className="text-neutral-600 text-xs">B • X • L • E • R • F</span>
+                <span className="text-neutral-600 text-xs">B • X • L • E • R • F • S {clipboard && "• Ctrl+V"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -640,12 +729,67 @@ export default function CreatePage() {
                   title="Fill (F)"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15a1.49 1.49 0 0 0 0 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.58.59-1.53 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.33-2-3.5-2-3.5z"/>
+                    <path d="M16.56 8.94L7.62 0 6.21 1.41l2.38 2.38-5.15 5.15c-.59.59-.59 1.54 0 2.12l5.5 5.5c.29.29.68.44 1.06.44s.77-.15 1.06-.44l5.5-5.5c.59-.58.59-1.53 0-2.12zM5.21 10L10 5.21 14.79 10H5.21zM19 11.5s-2 2.17-2 3.5c0 1.1.9 2 2 2s2-.9 2-2c0-1.33-2-3.5-2-3.5z"/>
                   </svg>
                 </button>
+                <div className="w-px h-6 bg-neutral-800 mx-1"></div>
+                <button
+                  onClick={() => setActiveTool('select')}
+                  className={`p-2 rounded-md transition-colors ${
+                    activeTool === 'select'
+                      ? 'bg-white text-black'
+                      : 'bg-background text-neutral-300 hover:bg-neutral-800'
+                  }`}
+                  title="Select (S)"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="4 2">
+                    <rect x="6" y="6" width="12" height="12"/>
+                  </svg>
+                </button>
+                {selection && (
+                  <>
+                    <button
+                      onClick={copySelection}
+                      className="p-2 rounded-md transition-colors bg-background text-neutral-300 hover:bg-neutral-800"
+                      title="Copy Selection (Ctrl+C)"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                      </svg>
+                    </button>
+                  </>
+                )}
+                {clipboard && (
+                  <button
+                    onClick={pasteClipboard}
+                    className="p-2 rounded-md transition-colors bg-background text-neutral-300 hover:bg-neutral-800"
+                    title="Paste (Ctrl+V)"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                      <rect x="8" y="2" width="8" height="4" rx="1"/>
+                    </svg>
+                  </button>
+                )}
                 <div className="flex-1"></div>
+                <button
+                  onClick={undo}
+                  disabled={historyIndex <= 0}
+                  className={`p-2 rounded-md transition-colors ${
+                    historyIndex > 0
+                      ? 'bg-background text-neutral-300 hover:bg-neutral-800'
+                      : 'bg-background text-neutral-600 cursor-not-allowed'
+                  }`}
+                  title="Undo (Ctrl+Z)"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M3 7v6h6"/>
+                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+                  </svg>
+                </button>
                 <div className="text-neutral-600 text-xs">
-                  [ ] Size • Space Play
+                  [ ] Size • Space Play • Ctrl+Z
                 </div>
               </div>
             </div>
@@ -662,6 +806,10 @@ export default function CreatePage() {
                 onionSkin={getOnionSkin()}
                 cellSize={14}
                 showGrid={true}
+                selection={selection}
+                onSelectionChange={setSelection}
+                isSelecting={isSelecting}
+                onSelectingChange={setIsSelecting}
               />
             </div>
 

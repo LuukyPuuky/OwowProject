@@ -1,7 +1,7 @@
 import "server-only";
 import { Ticker } from "./display/ticker";
 import { DisplayManager } from "./display/display-manager";
-import { FPS } from "./display/settings";
+import { FPS, HARDWARE_WIDTH, HARDWARE_HEIGHT } from "./display/settings";
 import { getAnimation, type AnimationId } from "./animations";
 
 class AnimationEngine {
@@ -12,10 +12,10 @@ class AnimationEngine {
   private isRunning = false;
 
   constructor() {
-    // 80x20 pixel display
+    // Hardware display dimensions for actual flipdot board
     this.displayManager = new DisplayManager({
-      width: 80,
-      height: 20,
+      width: HARDWARE_WIDTH,
+      height: HARDWARE_HEIGHT,
       fps: FPS,
     });
 
@@ -59,10 +59,10 @@ class AnimationEngine {
       }
 
       // Render the current frame
-      const imageData = ctx.createImageData(80, 20);
+      const imageData = ctx.createImageData(HARDWARE_WIDTH, HARDWARE_HEIGHT);
       const data = imageData.data;
       
-      for (let i = 0; i < currentFrame.arr.length && i < 80 * 20; i++) {
+      for (let i = 0; i < currentFrame.arr.length && i < HARDWARE_WIDTH * HARDWARE_HEIGHT; i++) {
         const pixelValue = currentFrame.arr[i] ? 255 : 0;
         const index = i * 4;
         data[index] = pixelValue;     // R

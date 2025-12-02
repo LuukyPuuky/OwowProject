@@ -101,10 +101,10 @@ export function AnimationCard({
         <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
           <PixelDisplay
             size="large"
-            animationType={customFrames ? undefined : (animationType || id || "1")}
-            customFrames={customFrames}
-            autoRefresh={isEquipped || isHovered}
-            staticFrame={(!isEquipped && !isHovered && thumbnail && Array.isArray(thumbnail)) ? thumbnail : undefined}
+              animationType={isEquipped ? undefined : (customFrames ? undefined : (animationType || id || "1"))}
+              customFrames={isEquipped ? undefined : customFrames}
+              autoRefresh={(!isEquipped && isHovered)}
+              staticFrame={((!isEquipped || !isHovered) && thumbnail && Array.isArray(thumbnail)) ? thumbnail : undefined}
           />
         </div>
 

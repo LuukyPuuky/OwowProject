@@ -14,6 +14,10 @@ interface PixelCanvasProps {
   onionSkin?: boolean[];
   cellSize?: number;
   showGrid?: boolean;
+  selection?: { startX: number; startY: number; endX: number; endY: number } | null;
+  onSelectionChange?: (selection: { startX: number; startY: number; endX: number; endY: number } | null) => void;
+  isSelecting?: boolean;
+  onSelectingChange?: (isSelecting: boolean) => void;
 }
 
 export function PixelCanvas({
@@ -26,6 +30,10 @@ export function PixelCanvas({
   onionSkin,
   cellSize = 8,
   showGrid = true,
+  selection,
+  onSelectionChange,
+  isSelecting,
+  onSelectingChange,
 }: PixelCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -79,6 +87,45 @@ export function PixelCanvas({
       });
     }
 
+    // Draw selection rectangle
+    if (selection) {
+      const minX = Math.min(selection.startX, selection.endX);
+      const maxX = Math.max(selection.startX, selection.endX);
+      const minY = Math.min(selection.startY, selection.endY);
+      const maxY = Math.max(selection.startY, selection.endY);
+
+      ctx.strokeStyle = '#00ff00';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(
+        minX * cellSize - 1,
+        minY * cellSize - 1,
+        (maxX - minX + 1) * cellSize + 2,
+        (maxY - minY + 1) * cellSize + 2
+      );
+      ctx.setLineDash([]);
+
+      // Draw semi-transparent overlay outside selection
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      
+      // Top
+      if (minY > 0) {
+        ctx.fillRect(0, 0, CANVAS_WIDTH * cellSize, minY * cellSize);
+      }
+      // Bottom
+      if (maxY < CANVAS_HEIGHT - 1) {
+        ctx.fillRect(0, (maxY + 1) * cellSize, CANVAS_WIDTH * cellSize, (CANVAS_HEIGHT - maxY - 1) * cellSize);
+      }
+      // Left
+      if (minX > 0) {
+        ctx.fillRect(0, minY * cellSize, minX * cellSize, (maxY - minY + 1) * cellSize);
+      }
+      // Right
+      if (maxX < CANVAS_WIDTH - 1) {
+        ctx.fillRect((maxX + 1) * cellSize, minY * cellSize, (CANVAS_WIDTH - maxX - 1) * cellSize, (maxY - minY + 1) * cellSize);
+      }
+    }
+
     // Draw grid
     if (showGrid) {
       ctx.strokeStyle = '#1a1a1a';
@@ -100,7 +147,7 @@ export function PixelCanvas({
         ctx.stroke();
       }
     }
-  }, [pixels, onionSkin, cellSize, showGrid, brushMode]);
+  }, [pixels, onionSkin, cellSize, showGrid, brushMode, selection]);
 
   // Request animation frame render instead of immediate useEffect
   useEffect(() => {
@@ -253,6 +300,19 @@ export function PixelCanvas({
     
     isMouseDownRef.current = true;
     
+    if (activeTool === 'select') {
+      // Start selection
+      const x = index % CANVAS_WIDTH;
+      const y = Math.floor(index / CANVAS_WIDTH);
+      if (onSelectionChange) {
+        onSelectionChange({ startX: x, startY: y, endX: x, endY: y });
+      }
+      if (onSelectingChange) {
+        onSelectingChange(true);
+      }
+      return;
+    }
+    
     if (activeTool === 'brush') {
       const newArr = [...pixels];
       applyBrushAt(index, newArr);
@@ -266,7 +326,7 @@ export function PixelCanvas({
       shapeStartIndexRef.current = index;
       shapePreviewRef.current = null;
     }
-  }, [activeTool, pixels, getIndexFromMouseEvent, applyBrushAt, floodFill, onPixelsChange]);
+  }, [activeTool, pixels, getIndexFromMouseEvent, applyBrushAt, floodFill, onPixelsChange, onSelectionChange, onSelectingChange]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isMouseDownRef.current) {
@@ -279,6 +339,16 @@ export function PixelCanvas({
     
     const index = getIndexFromMouseEvent(e);
     if (index < 0) return;
+    
+    if (activeTool === 'select' && isSelecting && selection) {
+      // Update selection end point
+      const x = index % CANVAS_WIDTH;
+      const y = Math.floor(index / CANVAS_WIDTH);
+      if (onSelectionChange) {
+        onSelectionChange({ ...selection, endX: x, endY: y });
+      }
+      return;
+    }
     
     if (activeTool === 'brush') {
       const newArr = [...pixels];
@@ -295,13 +365,21 @@ export function PixelCanvas({
         renderCanvas();
       }
     }
-  }, [activeTool, pixels, getIndexFromMouseEvent, applyBrushAt, applyBrushLine, drawShape, onPixelsChange, renderCanvas]);
+  }, [activeTool, pixels, getIndexFromMouseEvent, applyBrushAt, applyBrushLine, drawShape, onPixelsChange, renderCanvas, isSelecting, selection, onSelectionChange]);
 
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isMouseDownRef.current) return;
     
     const index = getIndexFromMouseEvent(e);
-    if (index >= 0 && activeTool !== 'brush' && activeTool !== 'fill' && shapeStartIndexRef.current >= 0) {
+    
+    if (activeTool === 'select' && onSelectingChange) {
+      // Finish selection
+      onSelectingChange(false);
+      isMouseDownRef.current = false;
+      return;
+    }
+    
+    if (index >= 0 && activeTool !== 'brush' && activeTool !== 'fill' && activeTool !== 'select' && shapeStartIndexRef.current >= 0) {
       commitShape(shapeStartIndexRef.current, index);
       shapePreviewRef.current = null;
       shapeStartIndexRef.current = -1;
@@ -310,7 +388,7 @@ export function PixelCanvas({
     
     isMouseDownRef.current = false;
     lastMouseIndexRef.current = -1;
-  }, [activeTool, getIndexFromMouseEvent, commitShape, renderCanvas]);
+  }, [activeTool, getIndexFromMouseEvent, commitShape, renderCanvas, onSelectingChange]);
 
   const handleMouseLeave = useCallback(() => {
     isMouseDownRef.current = false;
