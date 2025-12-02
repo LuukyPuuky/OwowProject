@@ -14,7 +14,7 @@ export const timerAnimation: AnimationRenderer = (ctx, frame, config) => {
   if (!ctx) return;
 
   ctx.fillStyle = "#fff";
-  ctx.font = "14px monospace";
+  ctx.font = "bold 16px monospace";
 
   const metrics = ctx.measureText(text);
   ctx.fillText(text, 2, 2);
