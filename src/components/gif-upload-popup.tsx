@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MoreVertical, Upload, X, Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@radix-ui/themes";
 
 interface GifFile {
   id: string;
@@ -132,7 +132,6 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
         </h2>
         <Button
           variant="ghost"
-          size="icon"
           onClick={() => onClose?.()}
           className="text-muted-foreground"
         >

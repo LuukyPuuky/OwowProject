@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Theme } from "@radix-ui/themes";
 
 export const metadata: Metadata = {
   title: "Owow App",
@@ -13,8 +14,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body style={{ backgroundColor: "#161616" }}>{children}</body>
-    </html>
+    <Theme>
+      <html lang="en" suppressHydrationWarning>
+        <body style={{ backgroundColor: "#161616" }}>{children}</body>
+      </html>
+    </Theme>
   );
 }

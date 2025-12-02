@@ -4,15 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, ChevronDown, ChevronUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@radix-ui/themes";
+
 import Modal from "@/components/modal";
 import GifUploadPopup from "@/components/gif-upload-popup";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@radix-ui/react-dropdown-menu";
 
 interface TopBarProps {
   onToggleSidebar: () => void;
@@ -41,7 +42,6 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
-          size="icon"
           className="text-muted-foreground"
           onClick={onToggleSidebar}
         >
