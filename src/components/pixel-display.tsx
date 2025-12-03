@@ -7,6 +7,8 @@ interface PixelDisplayProps {
   size?: "small" | "large" | "mini";
   autoRefresh?: boolean;
   animationType?: string;
+  customFrames?: Array<{ dur: number; arr: boolean[] }>;
+  staticFrame?: boolean[];
   renderer?: (
     context: CanvasRenderingContext2D,
     width: number,
@@ -19,6 +21,8 @@ export function PixelDisplay({
   size = "small",
   autoRefresh = true,
   animationType,
+  customFrames,
+  staticFrame,
 }: PixelDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +37,86 @@ export function PixelDisplay({
   const height = 20;
 
   useEffect(() => {
-    if (!autoRefresh || !animationType) {
+    // Handle static frame (thumbnail)
+    if (staticFrame && staticFrame.length > 0) {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
+
+      const imageData = ctx.createImageData(width, height);
+      const data = imageData.data;
+
+      // Convert boolean array to RGBA
+      for (let i = 0; i < staticFrame.length && i < width * height; i++) {
+        const pixelValue = staticFrame[i] ? 255 : 0;
+        const index = i * 4;
+        data[index] = pixelValue;     // R
+        data[index + 1] = pixelValue; // G
+        data[index + 2] = pixelValue; // B
+        data[index + 3] = 255;        // A
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return;
+    }
+
+    if (!autoRefresh) {
+      // Clear canvas if no animation
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (canvas && ctx) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      }
+      return;
+    }
+
+    // Handle custom frames locally (no streaming)
+    if (customFrames && customFrames.length > 0) {
+      let currentFrame = 0;
+      let animationInterval: NodeJS.Timeout;
+      let isMounted = true;
+
+      const renderFrame = () => {
+        if (!isMounted) return;
+        
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext("2d");
+        if (!canvas || !ctx) return;
+
+        const frame = customFrames[currentFrame];
+        const imageData = ctx.createImageData(width, height);
+        const data = imageData.data;
+
+        // Convert boolean array to RGBA
+        for (let i = 0; i < frame.arr.length && i < width * height; i++) {
+          const pixelValue = frame.arr[i] ? 255 : 0;
+          const index = i * 4;
+          data[index] = pixelValue;     // R
+          data[index + 1] = pixelValue; // G
+          data[index + 2] = pixelValue; // B
+          data[index + 3] = 255;        // A
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        // Schedule next frame
+        currentFrame = (currentFrame + 1) % customFrames.length;
+        animationInterval = setTimeout(renderFrame, frame.dur);
+      };
+
+      renderFrame();
+
+      return () => {
+        isMounted = false;
+        if (animationInterval) {
+          clearTimeout(animationInterval);
+        }
+      };
+    }
+
+    // Handle streaming animations
+    if (!animationType) {
       // Clear canvas if no animation
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
@@ -46,6 +129,7 @@ export function PixelDisplay({
 
     const controller = new AbortController();
     let isMounted = true;
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
     const startStream = async () => {
       try {
@@ -59,7 +143,7 @@ export function PixelDisplay({
 
         if (!response.body) return;
 
-        const reader = response.body.getReader();
+        reader = response.body.getReader();
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -119,8 +203,14 @@ export function PixelDisplay({
     return () => {
       isMounted = false;
       controller.abort();
+      // Force cancel the reader stream immediately
+      if (reader) {
+        reader.cancel().catch(() => {
+          // Ignore errors on cancel
+        });
+      }
     };
-  }, [autoRefresh, animationType]);
+  }, [autoRefresh, animationType, customFrames, staticFrame]);
 
   return (
     <div

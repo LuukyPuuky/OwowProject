@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { PixelDisplay } from "../components/pixel-display";
 import { Button } from "@radix-ui/themes";
@@ -15,6 +16,8 @@ interface AnimationCardProps {
   title: string;
   status: string;
   animationType?: string;
+  customFrames?: Array<{ dur: number; arr: boolean[] }>;
+  thumbnail?: string | boolean[];
   isFavorite?: boolean;
   onDelete: (id: string) => void;
   onFavorite: (id: string) => void;
@@ -26,11 +29,15 @@ export function AnimationCard({
   id,
   title,
   animationType,
+  customFrames,
+  thumbnail,
   onDelete,
   onFavorite,
   isEquipped,
   onEquip,
 }: AnimationCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   const handleCardClick = () => {
     onEquip(id);
   };
@@ -49,6 +56,8 @@ export function AnimationCard({
     <div
       className="border-3 border-border rounded-lg bg-card overflow-hidden group hover:border-muted-foreground/50 transition-colors cursor-pointer"
       onClick={handleCardClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="p-4">
         <div className="flex justify-end mb-2 cursor-pointer">
@@ -91,8 +100,10 @@ export function AnimationCard({
         <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
           <PixelDisplay
             size="large"
-            animationType={animationType || id || "1"}
-            autoRefresh={true}
+              animationType={isEquipped ? undefined : (customFrames ? undefined : (animationType || id || "1"))}
+              customFrames={isEquipped ? undefined : customFrames}
+              autoRefresh={(!isEquipped && isHovered)}
+              staticFrame={((!isEquipped || !isHovered) && thumbnail && Array.isArray(thumbnail)) ? thumbnail : undefined}
           />
         </div>
 
