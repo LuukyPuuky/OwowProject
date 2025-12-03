@@ -48,7 +48,7 @@ export const logoAnimation: AnimationRenderer = (ctx, frame, config) => {
   if (!ctx) return;
 
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 12px sans-serif";
+  ctx.font = "bold 16px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 

@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { MoreVertical } from "lucide-react";
-import { Button } from "../components/ui/button";
 import { PixelDisplay } from "../components/pixel-display";
+import { Button } from "@radix-ui/themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@radix-ui/react-dropdown-menu";
 
 interface AnimationCardProps {
   id: string;
@@ -65,7 +65,6 @@ export function AnimationCard({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
                 className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer pointer-events-auto"
                 onClick={(event) => event.stopPropagation()}
               >

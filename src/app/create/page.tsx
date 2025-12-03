@@ -616,6 +616,43 @@ export default function CreatePage() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePlayPause, nextFrame, prevFrame, selection, clipboard, copySelection, pasteClipboard, history, historyIndex, currentFrameIndex]);
+import { useState } from "react";
+import ControlPanel from "@/components/ControlPanel";
+import { TopBar as Header } from "@/components/top-bar";
+import { Sidebar } from "@/components/sidebar";
+import CanvasTimeline from "@/components/CanvasTimeline";
+import LatestAnimations from "@/components/LatestAnimations";
+
+export default function Page() {
+  const [currentFrame, setCurrentFrame] = useState(0);
+  const [frames, setFrames] = useState([
+    { id: 1 },
+    { id: 2 },
+    { id: 3 },
+    { id: 4 },
+  ]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const favorites = new Set<string>();
+
+  const addFrame = () => {
+    setFrames([...frames, { id: frames.length + 1 }]);
+  };
+
+  const removeFrame = () => {
+    if (frames.length > 1) {
+      setFrames(frames.filter((_, i) => i !== currentFrame));
+      if (currentFrame >= frames.length - 1) {
+        setCurrentFrame(Math.max(0, currentFrame - 1));
+      }
+    }
+  };
+
+  const duplicateFrame = () => {
+    const newFrame = { id: Math.max(...frames.map((f) => f.id), 0) + 1 };
+    const newFrames = [...frames];
+    newFrames.splice(currentFrame + 1, 0, newFrame);
+    setFrames(newFrames);
+  };
 
   return (
     <div className="flex h-screen bg-background text-foreground">

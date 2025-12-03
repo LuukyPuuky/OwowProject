@@ -25,7 +25,8 @@ const generateWaveThumbnail = (): boolean[] => {
 export const waveMetadata = {
   id: "wave",
   name: "Wave",
-  description: "A sine wave that moves across the screen",
+  description: "A wave that moves across the screen",
+  thumbnail: "/api/thumbnail/wave",
   status: "Available" as const,
   thumbnail: generateWaveThumbnail(),
 };

@@ -91,7 +91,8 @@ export class DisplayManager {
       const g = data[i * 4 + 1];
       const b = data[i * 4 + 2];
       // Simple brightness calculation
-      rawBuffer[i] = Math.round((r + g + b) / 3);
+      const brightness = (r + g + b) / 3;
+      rawBuffer[i] = brightness > 127 ? 255 : 0;
     }
 
     return rawBuffer;
