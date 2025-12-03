@@ -20,7 +20,6 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleSidebar: () => void;
   favorites?: Set<string>;
-  onRemoveFavorite: (id: string) => void;
   equippedAnimation?: AnimationMetadata;
   equippedCustomFrames?: Array<{ dur: number; arr: boolean[] }>;
   customAnimations?: Array<{
@@ -38,7 +37,6 @@ export function Sidebar({
   isCollapsed,
   onToggleSidebar,
   favorites,
-  onRemoveFavorite,
   equippedAnimation,
   equippedCustomFrames,
   customAnimations = [],
@@ -64,8 +62,7 @@ export function Sidebar({
             
             // Otherwise check built-in animations
             const animationObject = Object.values(animations).find(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (a: any) => a.metadata?.id === id
+              (a) => 'metadata' in a && a.metadata?.id === id
             );
             return animationObject?.metadata;
           })
@@ -234,12 +231,7 @@ export function Sidebar({
                             </div>
                             <p>{anim.name}</p>
                           </div>
-                          <button
-                            onClick={() => onRemoveFavorite(anim.id)}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
+                          {/* Remove favorite button removed (dead code) */}
                         </div>
                       );
                     })}

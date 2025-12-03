@@ -1,15 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import "server-only";
 import { createCanvas, Canvas } from "canvas";
 import type {
   DisplayConfig,
   AnimationFrame,
   AnimationRenderer,
+  CanvasContext,
 } from "././types";
 
 export class DisplayManager {
   private canvas: Canvas;
-  private ctx: any;
+  private ctx: CanvasContext;
   private config: DisplayConfig;
   private currentRenderer: AnimationRenderer | null = null;
 
@@ -18,11 +18,13 @@ export class DisplayManager {
 
     // Use server-side canvas from 'canvas' package
     this.canvas = createCanvas(config.width, config.height);
-    this.ctx = this.canvas.getContext("2d");
+    this.ctx = this.canvas.getContext("2d") as unknown as CanvasContext;
 
     // Disable anti-aliasing for pixel-perfect rendering
-    this.ctx.imageSmoothingEnabled = false;
-    this.ctx.textBaseline = "top";
+    if (this.ctx) {
+      this.ctx.imageSmoothingEnabled = false;
+      this.ctx.textBaseline = "top";
+    }
   }
 
   setRenderer(renderer: AnimationRenderer) {
@@ -31,6 +33,7 @@ export class DisplayManager {
 
   async render(frame: AnimationFrame): Promise<Buffer> {
     const { ctx, config } = this;
+    if (!ctx) throw new Error("Canvas context not initialized");
 
     // Clear canvas
     ctx.clearRect(0, 0, config.width, config.height);
@@ -65,6 +68,7 @@ export class DisplayManager {
 
   async renderRaw(frame: AnimationFrame): Promise<Buffer> {
     const { ctx, config } = this;
+    if (!ctx) throw new Error("Canvas context not initialized");
 
     // Clear canvas
     ctx.clearRect(0, 0, config.width, config.height);

@@ -7,7 +7,6 @@ import { PixelDisplay } from './pixel-display';
 interface Animation {
   id: string;
   title: string;
-  preview?: React.ReactNode;
   equipped: boolean;
   frames?: Array<{ dur: number; arr: boolean[] }>;
 }

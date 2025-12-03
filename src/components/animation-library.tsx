@@ -136,7 +136,6 @@ export function AnimationLibrary() {
         isCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         favorites={favorites}
-        onRemoveFavorite={handleAddFavorite}
         equippedAnimation={equippedAnimation}
         equippedCustomFrames={equippedCustomFrames}
         customAnimations={customAnimations}

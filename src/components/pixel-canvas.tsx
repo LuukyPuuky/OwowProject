@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback, useEffect } from "react";
-import { CANVAS_WIDTH, CANVAS_HEIGHT, bresenhamLine, drawEllipse } from "@/lib/canvas-utils";
+import { CANVAS_WIDTH, CANVAS_HEIGHT, bresenhamLine, drawEllipse } from "@/lib/canvas";
 import type { BrushMode, BrushShape, Tool } from "@/lib/types";
 
 interface PixelCanvasProps {
