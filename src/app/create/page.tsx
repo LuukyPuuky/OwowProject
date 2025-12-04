@@ -18,7 +18,7 @@ import { animations } from "@/lib/animations";
 
 export default function CreatePage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const favorites = new Set<string>();
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   // Custom animations state for sidebar preview
   const [customAnimations, setCustomAnimations] = useState<Array<{
@@ -136,7 +136,7 @@ export default function CreatePage() {
     }
   }, [modalConfig.dialogId, skipDialogs]);
 
-  // Load custom animations and equipped animation for sidebar preview
+  // Load custom animations, favorites, and equipped animation for sidebar preview
   useEffect(() => {
     const loadData = () => {
       try {
@@ -144,6 +144,12 @@ export default function CreatePage() {
         const saved = localStorage.getItem('customAnimations');
         if (saved) {
           setCustomAnimations(JSON.parse(saved));
+        }
+        
+        // Load favorites
+        const savedFavorites = localStorage.getItem('favorites');
+        if (savedFavorites) {
+          setFavorites(new Set(JSON.parse(savedFavorites)));
         }
         
         // Load equipped animation ID
@@ -595,16 +601,6 @@ export default function CreatePage() {
           />
         </div>
       </main>
-
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
 
       {/* Modal */}
       <Modal

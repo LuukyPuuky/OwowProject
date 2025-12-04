@@ -23,7 +23,7 @@ export function AnimationLibrary() {
     status: string;
   }>>([]);
 
-  // Load custom animations and equipped animation from localStorage (client-only)
+  // Load custom animations, favorites, and equipped animation from localStorage (client-only)
   useEffect(() => {
     const loadCustomAnimations = () => {
       try {
@@ -31,9 +31,20 @@ export function AnimationLibrary() {
         if (saved) {
           setCustomAnimations(JSON.parse(saved));
         }
+        // Load favorites
+        const savedFavorites = localStorage.getItem('favorites');
+        if (savedFavorites) {
+          setFavorites(new Set(JSON.parse(savedFavorites)));
+        }
         // Load equipped ID after mount to avoid hydration mismatches
         const eq = localStorage.getItem('equippedAnimationId');
-        if (eq) setEquippedId(eq);
+        if (eq) {
+          setEquippedId(eq);
+        } else {
+          // Set default to logo if nothing is equipped
+          localStorage.setItem('equippedAnimationId', 'logo');
+          setEquippedId('logo');
+        }
       } catch (error) {
         console.error('Failed to load custom animations:', error);
       }
@@ -66,13 +77,26 @@ export function AnimationLibrary() {
           ? { animationId: equippedId, customFrames: customAnim.frames }
           : { animationId: equippedId };
         
-        await fetch("/api/start", {
+        const response = await fetch("/api/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
+        }).catch((error) => {
+          // Silently handle network errors - backend API not available
+          console.warn("Animation start API not available:", error.message);
+          return null;
         });
+
+        if (!response) {
+          // API not available - this is fine, just means no hardware display
+          return;
+        }
+
+        if (!response.ok) {
+          console.warn("Failed to start animation:", response.statusText);
+        }
       } catch (error) {
-        console.error("Failed to start animation:", error);
+        console.warn("Failed to start animation (backend may not be running):", error);
       }
     };
 
@@ -87,6 +111,8 @@ export function AnimationLibrary() {
       } else {
         newSet.add(id);
       }
+      // Save to localStorage
+      localStorage.setItem('favorites', JSON.stringify([...newSet]));
       return newSet;
     });
   };

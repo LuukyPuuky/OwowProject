@@ -139,7 +139,23 @@ export function PixelDisplay({
           {
             signal: controller.signal,
           }
-        );
+        ).catch((error) => {
+          // Silently handle network errors - likely no backend running
+          console.warn("Stream API not available:", error.message);
+          return null;
+        });
+
+        if (!response) {
+          setIsLoading(false);
+          // Clear canvas on error
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext("2d");
+          if (canvas && ctx) {
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, width, height);
+          }
+          return;
+        }
 
         if (!response.body) {
           setIsLoading(false);
@@ -202,7 +218,15 @@ export function PixelDisplay({
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
-          console.error("Stream error:", error);
+          console.warn("Stream error (backend may not be running):", error);
+        }
+        setIsLoading(false);
+        // Clear canvas on error
+        const canvas = canvasRef.current;
+        const ctx = canvas?.getContext("2d");
+        if (canvas && ctx) {
+          ctx.fillStyle = "#000000";
+          ctx.fillRect(0, 0, width, height);
         }
       }
     };

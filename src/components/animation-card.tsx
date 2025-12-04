@@ -37,6 +37,7 @@ export function AnimationCard({
   onEquip,
 }: AnimationCardProps) {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const handleCardClick = () => {
     onEquip(id);
@@ -50,6 +51,20 @@ export function AnimationCard({
 
   const handleDelete = () => {
     onDelete(id);
+  };
+
+  const handleMouseEnter = () => {
+    // Small delay to prevent flickering on quick mouse movements
+    if (hoverTimeout) clearTimeout(hoverTimeout);
+    const timeout = setTimeout(() => {
+      setIsAnimating(true);
+    }, 100);
+    setHoverTimeout(timeout);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeout) clearTimeout(hoverTimeout);
+    setIsAnimating(false);
   };
 
   // Always show thumbnail when not animating or when equipped
@@ -101,8 +116,8 @@ export function AnimationCard({
 
         <div
           className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden"
-          onMouseEnter={() => setIsAnimating(true)}
-          onMouseLeave={() => setIsAnimating(false)}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
         >
           <PixelDisplay
             size="large"
