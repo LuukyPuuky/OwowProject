@@ -52,7 +52,7 @@ export const timerMetadata = {
   thumbnail: generateTimerThumbnail(),
 };
 
-export const timerAnimation: AnimationRenderer = (ctx, frame) => {
+export const timerAnimation: AnimationRenderer = (ctx, frame, config) => {
   const { elapsedTime } = frame;
   const text = (elapsedTime / 1000).toFixed(2);
 
@@ -61,5 +61,11 @@ export const timerAnimation: AnimationRenderer = (ctx, frame) => {
   ctx.fillStyle = "#fff";
   ctx.font = "14px monospace";
 
-  ctx.fillText(text, 2, 2);
+  // Center the time text using display config (avoids unused param and aligns with other animations)
+  const metrics = ctx.measureText(text);
+  const x = Math.floor((config.width - metrics.width) / 2);
+  // Rough vertical center for monospace; tweak if needed
+  const y = Math.floor(config.height / 2);
+
+  ctx.fillText(text, x, y);
 };
