@@ -208,7 +208,7 @@ export function Sidebar({
                         </div>
                         <button
                           onClick={() => onRemoveFavorite(anim.id)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          className="text-muted-foreground transition-colors border-2 border-transparent hover:border-[#323232] hover:rounded-md hover:text-white hover:border-2 hover:cursor-pointer"
                         >
                           <X className="h-4 w-4" />
                         </button>
