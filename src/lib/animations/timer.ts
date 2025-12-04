@@ -59,7 +59,7 @@ export const timerAnimation: AnimationRenderer = (ctx, frame, config) => {
   if (!ctx) return;
 
   ctx.fillStyle = "#fff";
-  ctx.font = "14px monospace";
+  ctx.font = "bold 16px monospace";
 
   // Center the time text using display config (avoids unused param and aligns with other animations)
   const metrics = ctx.measureText(text);
