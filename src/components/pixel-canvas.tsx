@@ -18,6 +18,7 @@ interface PixelCanvasProps {
   onSelectionChange?: (selection: { startX: number; startY: number; endX: number; endY: number } | null) => void;
   isSelecting?: boolean;
   onSelectingChange?: (isSelecting: boolean) => void;
+  onMousePosChange?: (pos: { x: number; y: number }) => void;
 }
 
 export function PixelCanvas({
@@ -34,6 +35,7 @@ export function PixelCanvas({
   onSelectionChange,
   isSelecting,
   onSelectingChange,
+  onMousePosChange,
 }: PixelCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -175,9 +177,15 @@ export function PixelCanvas({
     const cellHeight = rect.height / CANVAS_HEIGHT;
     const gridX = Math.floor(x / cellWidth);
     const gridY = Math.floor(y / cellHeight);
+    
+    // Track mouse position
+    if (onMousePosChange && gridX >= 0 && gridY >= 0 && gridX < CANVAS_WIDTH && gridY < CANVAS_HEIGHT) {
+      onMousePosChange({ x: gridX, y: gridY });
+    }
+    
     if (gridX < 0 || gridY < 0 || gridX >= CANVAS_WIDTH || gridY >= CANVAS_HEIGHT) return -1;
     return gridY * CANVAS_WIDTH + gridX;
-  }, []);
+  }, [onMousePosChange]);
 
   const applyBrushAt = useCallback((index: number, arr: boolean[]) => {
     const cx = index % CANVAS_WIDTH;

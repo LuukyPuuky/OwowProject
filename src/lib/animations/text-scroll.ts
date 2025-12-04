@@ -52,24 +52,24 @@ export const textScrollAnimation: AnimationRenderer = (ctx, frame, config) => {
   const { width, height } = config;
   const { elapsedTime } = frame;
 
-  const text = "HELLO WORLD! ";
+  const text = "HELLO WORLD!";
 
   ctx.fillStyle = "#fff";
-  ctx.font = "12px monospace";
+  ctx.font = "bold 16px monospace";
 
   // Calculate scroll position
   const scrollSpeed = 0.05;
+  const spacing = 30;
   const textWidth = ctx.measureText(text).width;
-  const offset = (elapsedTime * scrollSpeed) % (textWidth + width);
+  const totalWidth = textWidth + spacing;
+  const offset = (elapsedTime * scrollSpeed) % totalWidth;
 
   // Draw text scrolling from right to left
   const x = width - offset;
-  const y = height / 2 - 6;
+  const y = (height - 16) / 2;
 
+  // Draw multiple copies to ensure seamless infinite loop
   ctx.fillText(text, Math.floor(x), Math.floor(y));
-
-  // Draw second copy for seamless loop
-  if (x < 0) {
-    ctx.fillText(text, Math.floor(x + textWidth), Math.floor(y));
-  }
+  ctx.fillText(text, Math.floor(x + totalWidth), Math.floor(y));
+  ctx.fillText(text, Math.floor(x - totalWidth), Math.floor(y));
 };

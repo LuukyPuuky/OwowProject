@@ -207,7 +207,7 @@ export const pongAnimation: AnimationRenderer = (ctx, frame, config) => {
   ctx.fill();
 
   // Draw scoreboard
-  ctx.font = "10px monospace"; // Smaller font for 20px height
+  ctx.font = "bold 16px monospace";
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   ctx.textBaseline = "top";

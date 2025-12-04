@@ -1,8 +1,8 @@
 import "server-only";
-import { Ticker } from "./display/ticker";
-import { DisplayManager } from "./display/display-manager";
-import { FPS, HARDWARE_WIDTH, HARDWARE_HEIGHT } from "./display/settings";
-import { getAnimation, type AnimationId } from "./animations";
+import { Ticker } from "../display/ticker";
+import { DisplayManager } from "../display/display-manager";
+import { FPS, HARDWARE_WIDTH, HARDWARE_HEIGHT } from "../display/settings";
+import { getAnimation, type AnimationId } from "../animations";
 
 class AnimationEngine {
   private displayManager: DisplayManager;

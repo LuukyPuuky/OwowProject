@@ -2,8 +2,61 @@
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { Button } from "./button";
 
+// ============================================
+// WRAPPER PATTERN (for Luuk's top-bar usage)
+// ============================================
+interface ModalWrapperProps {
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+export function ModalWrapper({ open, onClose, children }: ModalWrapperProps) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    if (open) document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="absolute inset-0 bg-black/65 backdrop-blur-sm transition-opacity" />
+      
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative z-10 w-full max-w-3xl mx-4 transform rounded-lg bg-card border border-border p-6 text-muted-foreground shadow-lg"
+        style={{ animation: "modal-in .18s ease-out forwards" }}
+      >
+        {children}
+      </div>
+
+      <style>{`
+        @keyframes modal-in {
+          from { opacity: 0; transform: translateY(8px) scale(.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Default export for compatibility
+export default ModalWrapper;
+
+// ============================================
+// DIALOG PATTERN (for create page dialogs)
+// ============================================
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -103,14 +156,14 @@ export function Modal({
           )}
           <div className="flex items-center justify-end gap-3">
             {type === "confirm" && (
-              <Button
+              <button
                 onClick={onClose}
                 className="bg-neutral-900 text-neutral-300 border-2 border-neutral-800 px-4 py-2 rounded-md hover:bg-neutral-800 hover:text-neutral-200 transition-colors"
               >
                 {cancelText}
-              </Button>
+              </button>
             )}
-            <Button
+            <button
               onClick={() => {
                 if (onDontShowAgain && dontShowAgain) {
                   onDontShowAgain(true);
@@ -121,7 +174,7 @@ export function Modal({
               className="bg-white text-black border-2 border-white px-4 py-2 rounded-md hover:bg-neutral-200 transition-colors font-medium"
             >
               {confirmText}
-            </Button>
+            </button>
           </div>
         </div>
       </div>

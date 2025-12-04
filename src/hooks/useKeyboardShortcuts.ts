@@ -1,121 +1,113 @@
 import { useEffect } from "react";
 import type { Tool, BrushMode } from "@/lib/types";
 
-interface UseKeyboardShortcutsProps {
-  onPlayPause: () => void;
-  onNextFrame: () => void;
-  onPrevFrame: () => void;
-  onCopy: () => void;
-  onPaste: () => void;
-  onUndo: () => void;
-  onToolChange: (tool: Tool) => void;
-  onBrushModeChange: (mode: BrushMode) => void;
-  onBrushSizeChange: (delta: number) => void;
-  onClearSelection: () => void;
-  hasSelection: boolean;
-  hasClipboard: boolean;
+export interface KeyboardShortcutsOptions {
+  onPlayPause?: () => void;
+  onNextFrame?: () => void;
+  onPrevFrame?: () => void;
+  onCopy?: () => void;
+  onPaste?: () => void;
+  onUndo?: () => void;
+  onToolChange?: (tool: Tool) => void;
+  onBrushModeChange?: (mode: BrushMode) => void;
+  onBrushSizeChange?: (delta: number) => void;
+  onClearSelection?: () => void;
+  hasSelection?: boolean;
+  hasClipboard?: boolean;
 }
 
-/**
- * Hook that manages keyboard shortcuts for the editor
- */
-export function useKeyboardShortcuts({
-  onPlayPause,
-  onNextFrame,
-  onPrevFrame,
-  onCopy,
-  onPaste,
-  onUndo,
-  onToolChange,
-  onBrushModeChange,
-  onBrushSizeChange,
-  onClearSelection,
-  hasSelection,
-  hasClipboard,
-}: UseKeyboardShortcutsProps) {
+export function useKeyboardShortcuts(options: KeyboardShortcutsOptions) {
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
-      
-      const key = e.key.toLowerCase();
-      const ctrlOrCmd = e.ctrlKey || e.metaKey;
-      
-      // Playback controls
-      if (key === ' ') {
+    function handleKeyDown(e: KeyboardEvent) {
+      // Space: Play/Pause
+      if (e.code === "Space" && options.onPlayPause) {
         e.preventDefault();
-        onPlayPause();
-      } else if (key === 'arrowleft') {
+        options.onPlayPause();
+      }
+      // ArrowRight: Next frame
+      if (e.code === "ArrowRight" && options.onNextFrame) {
         e.preventDefault();
-        onPrevFrame();
-      } else if (key === 'arrowright') {
+        options.onNextFrame();
+      }
+      // ArrowLeft: Previous frame
+      if (e.code === "ArrowLeft" && options.onPrevFrame) {
         e.preventDefault();
-        onNextFrame();
+        options.onPrevFrame();
       }
-      
-      // Tool shortcuts
-      else if (key === 'b') {
-        onToolChange('brush');
-        onBrushModeChange('paint');
-      } else if (key === 'x') {
-        onToolChange('brush');
-        onBrushModeChange('erase');
-      } else if (key === 'l') {
-        onToolChange('line');
-      } else if (key === 'e') {
-        onToolChange('ellipse');
-      } else if (key === 'r') {
-        onToolChange('rect');
-      } else if (key === 'f') {
-        onToolChange('fill');
-      } else if (key === 's') {
-        onToolChange('select');
-      }
-      
-      // Brush size
-      else if (key === '[') {
-        onBrushSizeChange(-1);
-      } else if (key === ']') {
-        onBrushSizeChange(1);
-      }
-      
-      // Clipboard
-      else if (ctrlOrCmd && key === 'c' && hasSelection) {
+      // Ctrl+C: Copy
+      if (e.ctrlKey && e.code === "KeyC" && options.onCopy && options.hasSelection) {
         e.preventDefault();
-        onCopy();
-      } else if (ctrlOrCmd && key === 'v' && hasClipboard) {
+        options.onCopy();
+      }
+      // Ctrl+X: Cut
+      if (e.ctrlKey && e.code === "KeyX" && options.onClearSelection && options.hasSelection) {
         e.preventDefault();
-        onPaste();
+        options.onClearSelection();
       }
-      
-      // History
-      else if (ctrlOrCmd && key === 'z') {
+      // Ctrl+V: Paste
+      if (e.ctrlKey && e.code === "KeyV" && options.onPaste && options.hasClipboard) {
         e.preventDefault();
-        onUndo();
+        options.onPaste();
       }
-      
-      // Clear selection
-      else if (key === 'escape' && hasSelection) {
-        onClearSelection();
+      // Ctrl+Z: Undo
+      if (e.ctrlKey && e.code === "KeyZ" && options.onUndo) {
+        e.preventDefault();
+        options.onUndo();
       }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    onPlayPause,
-    onNextFrame,
-    onPrevFrame,
-    onCopy,
-    onPaste,
-    onUndo,
-    onToolChange,
-    onBrushModeChange,
-    onBrushSizeChange,
-    onClearSelection,
-    hasSelection,
-    hasClipboard,
-  ]);
+      // B: Brush
+      if (e.code === "KeyB" && options.onToolChange) {
+        e.preventDefault();
+        options.onToolChange("brush");
+        if (options.onBrushModeChange) options.onBrushModeChange("paint");
+      }
+      // X: Eraser
+      if (e.code === "KeyX" && options.onToolChange) {
+        e.preventDefault();
+        options.onToolChange("brush");
+        if (options.onBrushModeChange) options.onBrushModeChange("erase");
+      }
+      // L: Line
+      if (e.code === "KeyL" && options.onToolChange) {
+        e.preventDefault();
+        options.onToolChange("line");
+      }
+      // E: Ellipse
+      if (e.code === "KeyE" && options.onToolChange) {
+        e.preventDefault();
+        options.onToolChange("ellipse");
+      }
+      // R: Rectangle
+      if (e.code === "KeyR" && options.onToolChange) {
+        e.preventDefault();
+        options.onToolChange("rect");
+      }
+      // F: Fill
+      if (e.code === "KeyF" && options.onToolChange) {
+        e.preventDefault();
+        options.onToolChange("fill");
+      }
+      // S: Select
+      if (e.code === "KeyS" && options.onToolChange) {
+        e.preventDefault();
+        options.onToolChange("select");
+      }
+      // [: Brush size down
+      if (e.code === "BracketLeft" && options.onBrushSizeChange) {
+        e.preventDefault();
+        options.onBrushSizeChange(-1);
+      }
+      // ]: Brush size up
+      if (e.code === "BracketRight" && options.onBrushSizeChange) {
+        e.preventDefault();
+        options.onBrushSizeChange(1);
+      }
+      // Escape: Clear selection
+      if (e.code === "Escape" && options.onClearSelection) {
+        e.preventDefault();
+        options.onClearSelection();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [options]);
 }

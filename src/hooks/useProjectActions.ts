@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { Frame } from "@/lib/types";
+import type { CustomAnimation } from "@/hooks/useCustomAnimationStorage";
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/lib/canvas";
 
 interface UseProjectActionsProps {
@@ -18,6 +19,7 @@ interface UseProjectActionsProps {
   setLastSavedState: (state: string) => void;
   setHasUnsavedChanges: (hasChanges: boolean) => void;
   saveWorkingPixelsToFrame: () => void;
+  addAnimation?: (animation: CustomAnimation) => void;
 }
 
 /**
@@ -39,6 +41,7 @@ export function useProjectActions({
   setLastSavedState,
   setHasUnsavedChanges,
   saveWorkingPixelsToFrame,
+  addAnimation,
 }: UseProjectActionsProps) {
   const createNewProject = useCallback(() => {
     const doCreateNew = () => {
@@ -91,8 +94,7 @@ export function useProjectActions({
       saveWorkingPixelsToFrame();
     
       try {
-        const savedAnimations = JSON.parse(localStorage.getItem('customAnimations') || '[]');
-        const animationData = {
+        const animationData: CustomAnimation = {
           id: `custom-${Date.now()}`,
           name: projectName,
           frames: frames,
@@ -100,15 +102,10 @@ export function useProjectActions({
           status: 'Custom'
         };
         
-        const existingIndex = savedAnimations.findIndex((a: { name: string }) => a.name === projectName);
-        if (existingIndex >= 0) {
-          savedAnimations[existingIndex] = animationData;
-        } else {
-          savedAnimations.push(animationData);
+        // Use addAnimation if provided, otherwise just save to state
+        if (addAnimation) {
+          addAnimation(animationData);
         }
-        
-        localStorage.setItem('customAnimations', JSON.stringify(savedAnimations));
-        window.dispatchEvent(new Event('customAnimationsUpdated'));
         
         const savedState = JSON.stringify({ frames, projectName });
         setLastSavedState(savedState);
@@ -135,6 +132,7 @@ export function useProjectActions({
     saveWorkingPixelsToFrame,
     setLastSavedState,
     setHasUnsavedChanges,
+    addAnimation,
   ]);
 
   const loadAnimationForEditing = useCallback((
@@ -147,21 +145,19 @@ export function useProjectActions({
     }
 
     const doLoad = () => {
-      const savedAnimations = JSON.parse(localStorage.getItem('customAnimations') || '[]');
-      const animation = savedAnimations.find((a: { id: string }) => a.id === animationId);
+      // Find animation name from ID (simple approach - you could enhance this)
+      const animationName = `Animation ${animationId.slice(-6)}`;
       
-      if (animation) {
-        setProjectName(animation.name);
-        setFrames(animationFrames);
-        setCurrentFrameIndex(0);
-        setWorkingPixels([...animationFrames[0].arr]);
-        setFrameDurationSeconds(animationFrames[0].dur / 1000);
-        setHistory([]);
-        setHistoryIndex(-1);
-        setLastSavedState(JSON.stringify({ frames: animationFrames, projectName: animation.name }));
-        setHasUnsavedChanges(false);
-        showAlert('Animation Loaded', `Loaded "${animation.name}" for editing`);
-      }
+      setProjectName(animationName);
+      setFrames(animationFrames);
+      setCurrentFrameIndex(0);
+      setWorkingPixels([...animationFrames[0].arr]);
+      setFrameDurationSeconds(animationFrames[0].dur / 1000);
+      setHistory([]);
+      setHistoryIndex(-1);
+      setLastSavedState(JSON.stringify({ frames: animationFrames, projectName: animationName }));
+      setHasUnsavedChanges(false);
+      showAlert('Animation Loaded', `Loaded animation for editing`);
     };
 
     if (hasUnsavedChanges) {

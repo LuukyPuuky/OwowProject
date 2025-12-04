@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   ChevronUp,
@@ -8,7 +8,7 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { Input } from "../components/ui/input";
+
 import { PixelDisplay } from "@/components/pixel-display";
 import { animations } from "@/lib/animations";
 
@@ -43,6 +43,11 @@ export function Sidebar({
 }: SidebarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isFavouritesOpen, setIsFavouritesOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Get favorite animation objects (including custom animations)
   const favoriteAnimations =
@@ -95,7 +100,7 @@ export function Sidebar({
         <div className="p-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
+            <input
               type="text"
               placeholder="Search"
               value={searchQuery}
@@ -171,10 +176,10 @@ export function Sidebar({
                 </div>
 
                 <div className="border-3 border-border rounded-lg p-4 space-y-2">
-                  <h3 className="font-medium text-muted-foreground">
+                  <h3 className="font-medium text-muted-foreground" suppressHydrationWarning>
                     {equippedAnimation?.name || "No animation selected"}
                   </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-sm text-muted-foreground leading-relaxed" suppressHydrationWarning>
                     {equippedAnimation?.description ||
                       "Select an animation from your favorites to preview it here."}
                   </p>
@@ -243,8 +248,8 @@ export function Sidebar({
 
           {/* Currently Section */}
           <div className="px-6 pb-6 border-t border-border pt-6">
-            <p className="text-sm text-muted-foreground">
-              Currently: {equippedAnimation?.name || "None"}
+              <p className="text-sm text-muted-foreground">
+                Currently: {isMounted ? (equippedAnimation?.name || "None") : "None"}
             </p>
           </div>
         </div>

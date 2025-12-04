@@ -6,7 +6,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/lib/canvas";
 import type { Frame } from "@/lib/types";
 
 interface FrameThumbnailProps {
-  frame: Frame;
+  frame: Frame | undefined;
   index: number;
   isActive: boolean;
   onClick: () => void;
@@ -17,6 +17,7 @@ const FrameThumbnail = memo<FrameThumbnailProps>(
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
+      if (!frame || !frame.arr) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
 
@@ -35,7 +36,7 @@ const FrameThumbnail = memo<FrameThumbnailProps>(
           ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
         }
       }
-    }, [frame.arr]);
+    }, [frame]);
 
     return (
       <button
@@ -45,7 +46,7 @@ const FrameThumbnail = memo<FrameThumbnailProps>(
             ? "border-neutral-500 bg-neutral-900"
             : "border-neutral-800 bg-black hover:border-neutral-700"
         }`}
-        title={`Frame ${index + 1} • ${(frame.dur / 1000).toFixed(1)}s`}
+        title={`Frame ${index + 1} • ${(((frame?.dur ?? 0) / 1000) || 0).toFixed(1)}s`}
       >
         <canvas
           ref={canvasRef}

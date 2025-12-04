@@ -57,24 +57,15 @@ export function PixelDisplay({
       }
 
       ctx.putImageData(imageData, 0, 0);
-      return;
-    }
-
-    if (!autoRefresh) {
-      // Clear canvas if no animation
-      const canvas = canvasRef.current;
-      const ctx = canvas?.getContext("2d");
-      if (canvas && ctx) {
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, width, height);
-      }
+      setIsLoading(false);
       return;
     }
 
     // Handle custom frames locally (no streaming)
     if (customFrames && customFrames.length > 0) {
+      setIsLoading(false);
       let currentFrame = 0;
-      let animationInterval: NodeJS.Timeout;
+      let animationInterval: NodeJS.Timeout | null = null;
       let isMounted = true;
 
       const renderFrame = () => {
@@ -85,6 +76,8 @@ export function PixelDisplay({
         if (!canvas || !ctx) return;
 
         const frame = customFrames[currentFrame];
+        if (!frame) return;
+        
         const imageData = ctx.createImageData(width, height);
         const data = imageData.data;
 
@@ -102,9 +95,13 @@ export function PixelDisplay({
 
         // Schedule next frame
         currentFrame = (currentFrame + 1) % customFrames.length;
-        animationInterval = setTimeout(renderFrame, frame.dur);
+        const nextFrameDuration = customFrames[currentFrame]?.dur ?? frame.dur;
+        if (isMounted) {
+          animationInterval = setTimeout(renderFrame, nextFrameDuration);
+        }
       };
 
+      // Render first frame immediately, then schedule the rest
       renderFrame();
 
       return () => {
@@ -115,8 +112,8 @@ export function PixelDisplay({
       };
     }
 
-    // Handle streaming animations
-    if (!animationType) {
+    // If no animation type and autoRefresh is off, or no content to show
+    if (!autoRefresh || !animationType) {
       // Clear canvas if no animation
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
@@ -124,8 +121,11 @@ export function PixelDisplay({
         ctx.fillStyle = "#000000";
         ctx.fillRect(0, 0, width, height);
       }
+      setIsLoading(false);
       return;
     }
+
+    // Handle streaming animations (only if we have animationType)
 
     const controller = new AbortController();
     let isMounted = true;
@@ -141,14 +141,23 @@ export function PixelDisplay({
           }
         );
 
-        if (!response.body) return;
+        if (!response.body) {
+          setIsLoading(false);
+          return;
+        }
 
         reader = response.body.getReader();
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        if (!canvas) {
+          setIsLoading(false);
+          return;
+        }
 
         const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+        if (!ctx) {
+          setIsLoading(false);
+          return;
+        }
 
         // Disable smoothing for pixel art look
         ctx.imageSmoothingEnabled = false;
@@ -160,7 +169,7 @@ export function PixelDisplay({
 
         while (isMounted) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done || !isMounted) break;
 
           // Append new data to accumulator
           const newBuffer = new Uint8Array(

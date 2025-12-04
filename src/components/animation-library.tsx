@@ -11,13 +11,8 @@ export function AnimationLibrary() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
-  const [equippedId, setEquippedId] = useState<string>(() => {
-    // Load equipped ID from localStorage on mount
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('equippedAnimationId') || "logo";
-    }
-    return "logo";
-  });
+  // Ensure SSR and client hydration start with the same value
+  const [equippedId, setEquippedId] = useState<string>("logo");
   const [sortBy, setSortBy] = useState("Name");
   const [filterBy, setFilterBy] = useState("All");
   const [customAnimations, setCustomAnimations] = useState<Array<{
@@ -28,7 +23,7 @@ export function AnimationLibrary() {
     status: string;
   }>>([]);
 
-  // Load custom animations from localStorage
+  // Load custom animations and equipped animation from localStorage (client-only)
   useEffect(() => {
     const loadCustomAnimations = () => {
       try {
@@ -36,6 +31,9 @@ export function AnimationLibrary() {
         if (saved) {
           setCustomAnimations(JSON.parse(saved));
         }
+        // Load equipped ID after mount to avoid hydration mismatches
+        const eq = localStorage.getItem('equippedAnimationId');
+        if (eq) setEquippedId(eq);
       } catch (error) {
         console.error('Failed to load custom animations:', error);
       }

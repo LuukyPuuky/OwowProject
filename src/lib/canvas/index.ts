@@ -1,7 +1,3 @@
-/**
- * Canvas utilities
- * Drawing algorithms and canvas manipulation functions
- */
-
-export * from './utils';
-export * from './animation-engine';
+// Export only client-safe utilities
+// animation-engine is server-only and should be imported directly where needed
+export * from "./utils";

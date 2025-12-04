@@ -22,6 +22,7 @@ export default function LatestAnimations({
 }: LatestAnimationsProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [latestAnimations, setLatestAnimations] = useState<Animation[]>([]);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // Load latest custom animations from localStorage
   useEffect(() => {
@@ -96,6 +97,8 @@ export default function LatestAnimations({
             <div
               key={animation.id}
               onClick={() => onAnimationSelect?.(animation.id, animation.frames)}
+              onMouseEnter={() => setHoveredId(animation.id)}
+              onMouseLeave={() => setHoveredId(null)}
               className="group cursor-pointer"
             >
               {/* Card Container */}
@@ -119,8 +122,9 @@ export default function LatestAnimations({
                     {animation.frames ? (
                       <PixelDisplay
                         size="mini"
-                        customFrames={animation.frames}
-                        autoRefresh={true}
+                        customFrames={hoveredId === animation.id ? animation.frames : undefined}
+                        autoRefresh={hoveredId === animation.id}
+                        staticFrame={hoveredId !== animation.id && Array.isArray(animation.frames?.[0]?.arr) ? animation.frames[0].arr : undefined}
                       />
                     ) : (
                       <div className="text-neutral-600 text-xs">No preview</div>

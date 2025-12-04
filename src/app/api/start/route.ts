@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const { animationEngine } = await import("@/lib/animation-engine");
+    const { animationEngine } = await import("@/lib/canvas/animation-engine");
 
     const { animationId, customFrames } = await request.json();
 

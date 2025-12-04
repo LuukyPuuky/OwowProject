@@ -13,7 +13,7 @@ import {
   Clipboard as ClipboardIcon,
   RotateCcw,
   RotateCw,
-  Triangle,
+  Droplet,
 } from "lucide-react";
 import type { Tool, BrushMode } from "@/lib/types";
 
@@ -146,7 +146,7 @@ export const EditorToolbar = memo<EditorToolbarProps>(
             }`}
             title="Fill (F)"
           >
-            <Triangle className="w-5 h-5 fill-current" />
+            <Droplet className="w-5 h-5" />
           </button>
 
           {/* Select */}
