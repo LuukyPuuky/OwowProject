@@ -8,6 +8,7 @@ import {
   Star,
   MoreVertical,
   X,
+  Eye,
 } from "lucide-react";
 
 import { PixelDisplay } from "@/components/pixel-display";
@@ -130,7 +131,7 @@ export function Sidebar({
               suppressHydrationWarning
             >
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-muted-foreground rounded-sm" />
+                <Eye className="h-4 w-4 text-muted-foreground" />
                 <span>Preview</span>
               </div>
               {isPreviewOpen ? (
