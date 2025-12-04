@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { MoreVertical } from "lucide-react";
-import { Button } from "../components/ui/button";
 import { PixelDisplay } from "../components/pixel-display";
+import { Button } from "@radix-ui/themes";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@radix-ui/react-dropdown-menu";
 
 interface AnimationCardProps {
   id: string;
@@ -36,7 +36,7 @@ export function AnimationCard({
   isEquipped,
   onEquip,
 }: AnimationCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const handleCardClick = () => {
     onEquip(id);
@@ -52,12 +52,14 @@ export function AnimationCard({
     onDelete(id);
   };
 
+  // Always show thumbnail when not animating or when equipped
+  const showStaticThumbnail = (!isAnimating || isEquipped) && Array.isArray(thumbnail);
+  const shouldAnimate = isAnimating && !isEquipped;
+
   return (
     <div
       className="border-3 border-border rounded-lg bg-card overflow-hidden group hover:border-muted-foreground/50 transition-colors cursor-pointer"
       onClick={handleCardClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="p-4">
         <div className="flex justify-end mb-2 cursor-pointer">
@@ -65,7 +67,6 @@ export function AnimationCard({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
                 className="h-8 w-8 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer pointer-events-auto"
                 onClick={(event) => event.stopPropagation()}
               >
@@ -98,13 +99,17 @@ export function AnimationCard({
           </DropdownMenu>
         </div>
 
-        <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
+        <div
+          className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden"
+          onMouseEnter={() => setIsAnimating(true)}
+          onMouseLeave={() => setIsAnimating(false)}
+        >
           <PixelDisplay
             size="large"
-              animationType={isEquipped ? undefined : (customFrames ? undefined : (animationType || id || "1"))}
-              customFrames={isEquipped ? undefined : customFrames}
-              autoRefresh={(!isEquipped && isHovered)}
-              staticFrame={((!isEquipped || !isHovered) && thumbnail && Array.isArray(thumbnail)) ? thumbnail : undefined}
+            animationType={shouldAnimate && !customFrames ? (animationType || id) : undefined}
+            customFrames={shouldAnimate ? customFrames : undefined}
+            autoRefresh={shouldAnimate}
+            staticFrame={showStaticThumbnail ? thumbnail : undefined}
           />
         </div>
 

@@ -17,6 +17,7 @@ interface EditorCanvasProps {
   isSelecting: boolean;
   onSelectingChange: (isSelecting: boolean) => void;
   disabled?: boolean;
+  onMousePosChange?: (pos: { x: number; y: number }) => void;
 }
 
 /**
@@ -36,9 +37,10 @@ export const EditorCanvas = memo<EditorCanvasProps>(
     isSelecting,
     onSelectingChange,
     disabled = false,
+    onMousePosChange,
   }) => {
     return (
-      <div className="w-full bg-black border-2 border-neutral-800 rounded-lg overflow-hidden mb-6 p-6 flex items-center justify-center">
+      <div className="flex-1 bg-black border-2 border-neutral-800 rounded-lg overflow-auto mb-6 p-6 flex items-center justify-center min-h-0">
         <PixelCanvas
           pixels={pixels}
           onPixelsChange={disabled ? () => {} : onPixelsChange}
@@ -53,6 +55,7 @@ export const EditorCanvas = memo<EditorCanvasProps>(
           onSelectionChange={onSelectionChange}
           isSelecting={isSelecting}
           onSelectingChange={onSelectingChange}
+          onMousePosChange={onMousePosChange}
         />
       </div>
     );
