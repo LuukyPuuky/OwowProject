@@ -8,6 +8,7 @@ import {
   Star,
   MoreVertical,
   X,
+  Eye,
 } from "lucide-react";
 
 import { PixelDisplay } from "@/components/pixel-display";
@@ -76,18 +77,18 @@ export function Sidebar({
       {!isCollapsed && (
         <div className="p-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground " />
             <input
               type="text"
               placeholder="Search"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 pr-10 border-2 border-border text-white placeholder:text-muted-foreground !bg-[#1f1f1f] focus:outline-none focus:ring-0 focus:border-border"
+              className="pl-10 pr-10  bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
             />
             {searchQuery && (
               <button
                 onClick={() => onSearchChange("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-muted-foreground border-2 border-transparent hover:border-[#323232] hover:rounded-md hover:text-white hover:border-2 hover:cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -98,7 +99,7 @@ export function Sidebar({
 
       {/* Preview Section */}
       {isCollapsed ? (
-        <div className="flex-1 flex flex-col items-center py-4 space-y-6">
+        <div className="flex-1 flex flex-col items-center py-4 space-y-6 ">
           {/* Collapsed Preview Button */}
           <button
             onClick={() => {
@@ -126,11 +127,11 @@ export function Sidebar({
           <div className="px-6 pt-6 pb-4 border-b-2 border-border">
             <button
               onClick={() => setIsPreviewOpen(!isPreviewOpen)}
-              className="w-full flex items-center justify-between text-sm font-medium mb-4 text-muted-foreground"
+              className="w-full flex items-center justify-between text-sm font-medium mb-4 text-muted-foreground hover:cursor-pointer"
               suppressHydrationWarning
             >
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-muted-foreground rounded-sm" />
+                <Eye className="h-4 w-4 text-muted-foreground" />
                 <span>Preview</span>
               </div>
               {isPreviewOpen ? (
@@ -167,7 +168,7 @@ export function Sidebar({
           <div className="px-6 pb-6 border-b-1 border-border mt-5">
             <button
               onClick={() => setIsFavouritesOpen(!isFavouritesOpen)}
-              className="w-full flex items-center justify-between text-sm font-medium text-muted-foreground"
+              className="w-full flex items-center justify-between text-sm font-medium text-muted-foreground hover:cursor-pointer"
               suppressHydrationWarning
             >
               <div className="flex items-center gap-2">
@@ -207,7 +208,7 @@ export function Sidebar({
                         </div>
                         <button
                           onClick={() => onRemoveFavorite(anim.id)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          className="text-muted-foreground transition-colors border-2 border-transparent hover:border-[#323232] hover:rounded-md hover:text-white hover:border-2 hover:cursor-pointer"
                         >
                           <X className="h-4 w-4" />
                         </button>
