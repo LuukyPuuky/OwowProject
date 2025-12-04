@@ -50,15 +50,24 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
         {/* Create dropdown & Library button next to collapse */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="bg-card text-muted-foreground border-2 border-border px-3 py-1 rounded-md focus:outline-none hover:bg-card hover:text-muted-foreground">
+            <Button className="bg-card text-muted-foreground border-2 border-border px-3 py-1 rounded-md focus:outline-none hover:bg-card hover:text-muted-foreground hover:cursor-pointer">
               Create
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent sideOffset={6} className="min-w-[12rem]">
-            <DropdownMenuItem onClick={() => router.push("/create")}>
+          <DropdownMenuContent
+            sideOffset={6}
+            className="min-w-[12rem] mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-10"
+          >
+            <DropdownMenuItem
+              onClick={() => router.push("/create")}
+              className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
+            >
               Animation Maker
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setUploadOpen(true)}>
+            <DropdownMenuItem
+              onClick={() => setUploadOpen(true)}
+              className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
+            >
               Upload
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -76,7 +85,7 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
           <Button
             variant="ghost"
             onClick={handleSortToggle}
-            className="gap-2 bg-[#1f1f1f] text-[#c3c3c3] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
+            className="flex flex-row items-center gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
           >
             {sortOpen ? (
               <ChevronUp className="h-4 w-4" />
@@ -110,7 +119,7 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
           <Button
             variant="outline"
             onClick={handleFilterToggle}
-            className="gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
+            className="flex flex-row items-center gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
           >
             {filterOpen ? (
               <ChevronUp className="h-4 w-4" />
