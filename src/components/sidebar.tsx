@@ -6,7 +6,6 @@ import {
   ChevronUp,
   ChevronDown,
   Star,
-  MoreVertical,
   X,
   Eye,
 } from "lucide-react";

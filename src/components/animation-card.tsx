@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MoreVertical } from "lucide-react";
 import { PixelDisplay } from "../components/pixel-display";
 import { Button } from "@radix-ui/themes";
@@ -15,6 +16,8 @@ interface AnimationCardProps {
   title: string;
   status: string;
   animationType?: string;
+  customFrames?: Array<{ dur: number; arr: boolean[] }>;
+  thumbnail?: string | boolean[];
   isFavorite?: boolean;
   onDelete: (id: string) => void;
   onFavorite: (id: string) => void;
@@ -26,11 +29,15 @@ export function AnimationCard({
   id,
   title,
   animationType,
+  customFrames,
+  thumbnail,
   onDelete,
   onFavorite,
   isEquipped,
   onEquip,
 }: AnimationCardProps) {
+  const [isAnimating, setIsAnimating] = useState(false);
+
   const handleCardClick = () => {
     onEquip(id);
   };
@@ -44,6 +51,10 @@ export function AnimationCard({
   const handleDelete = () => {
     onDelete(id);
   };
+
+  // Always show thumbnail when not animating or when equipped
+  const showStaticThumbnail = (!isAnimating || isEquipped) && Array.isArray(thumbnail);
+  const shouldAnimate = isAnimating && !isEquipped;
 
   return (
     <div
@@ -88,11 +99,17 @@ export function AnimationCard({
           </DropdownMenu>
         </div>
 
-        <div className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden">
+        <div
+          className="aspect-video bg-black rounded-lg flex items-center justify-center mb-4 overflow-hidden"
+          onMouseEnter={() => setIsAnimating(true)}
+          onMouseLeave={() => setIsAnimating(false)}
+        >
           <PixelDisplay
             size="large"
-            animationType={animationType || id || "1"}
-            autoRefresh={true}
+            animationType={shouldAnimate && !customFrames ? (animationType || id) : undefined}
+            customFrames={shouldAnimate ? customFrames : undefined}
+            autoRefresh={shouldAnimate}
+            staticFrame={showStaticThumbnail ? thumbnail : undefined}
           />
         </div>
 
