@@ -98,7 +98,7 @@ export function Sidebar({
 
       {/* Preview Section */}
       {isCollapsed ? (
-        <div className="flex-1 flex flex-col items-center py-4 space-y-6">
+        <div className="flex-1 flex flex-col items-center py-4 space-y-6 ">
           {/* Collapsed Preview Button */}
           <button
             onClick={() => {
@@ -126,7 +126,7 @@ export function Sidebar({
           <div className="px-6 pt-6 pb-4 border-b-2 border-border">
             <button
               onClick={() => setIsPreviewOpen(!isPreviewOpen)}
-              className="w-full flex items-center justify-between text-sm font-medium mb-4 text-muted-foreground"
+              className="w-full flex items-center justify-between text-sm font-medium mb-4 text-muted-foreground hover:cursor-pointer"
               suppressHydrationWarning
             >
               <div className="flex items-center gap-2">
@@ -167,7 +167,7 @@ export function Sidebar({
           <div className="px-6 pb-6 border-b-1 border-border mt-5">
             <button
               onClick={() => setIsFavouritesOpen(!isFavouritesOpen)}
-              className="w-full flex items-center justify-between text-sm font-medium text-muted-foreground"
+              className="w-full flex items-center justify-between text-sm font-medium text-muted-foreground hover:cursor-pointer"
               suppressHydrationWarning
             >
               <div className="flex items-center gap-2">
