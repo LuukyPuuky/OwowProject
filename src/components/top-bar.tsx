@@ -85,7 +85,7 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
           <Button
             variant="ghost"
             onClick={handleSortToggle}
-            className="flex flex-row items-center gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
+            className="flex flex-row items-center gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer"
           >
             {sortOpen ? (
               <ChevronUp className="h-4 w-4" />
@@ -104,7 +104,7 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
                       setSelectedSort(option);
                       setSortOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
                   >
                     {option}
                   </button>
@@ -119,7 +119,7 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
           <Button
             variant="outline"
             onClick={handleFilterToggle}
-            className="flex flex-row items-center gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3]"
+            className="flex flex-row items-center gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer"
           >
             {filterOpen ? (
               <ChevronUp className="h-4 w-4" />
@@ -138,7 +138,7 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
                       setSelectedFilter(option);
                       setFilterOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
                   >
                     {option}
                   </button>
