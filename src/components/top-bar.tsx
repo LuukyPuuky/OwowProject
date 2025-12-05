@@ -2,28 +2,35 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Menu, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@radix-ui/themes";
-
-import Modal from "@/components/modal";
-import GifUploadPopup from "@/components/gif-upload-popup";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@radix-ui/react-dropdown-menu";
+import Modal from "@/components/modal";
+import GifUploadPopup from "@/components/gif-upload-popup";
 
 interface TopBarProps {
   onToggleSidebar: () => void;
+  sortBy?: string;
+  onSortChange?: (sort: string) => void;
+  filterBy?: string;
+  onFilterChange?: (filter: string) => void;
 }
 
-export function TopBar({ onToggleSidebar }: TopBarProps) {
+export function TopBar({
+  onToggleSidebar,
+  sortBy = "Name",
+  onSortChange,
+  filterBy = "All",
+  onFilterChange,
+}: TopBarProps) {
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedSort, setSelectedSort] = useState("Name");
-  const [selectedFilter, setSelectedFilter] = useState("All");
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const handleSortToggle = () => {
     setSortOpen(!sortOpen);
@@ -34,8 +41,6 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
     setFilterOpen(!filterOpen);
     if (sortOpen) setSortOpen(false);
   };
-  const router = useRouter();
-  const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
     <div className="px-6 py-4 flex items-center justify-between">
@@ -47,107 +52,97 @@ export function TopBar({ onToggleSidebar }: TopBarProps) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        {/* Create dropdown & Library button next to collapse */}
+
+        {/* Create dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="bg-card text-muted-foreground border-2 border-border px-3 py-1 rounded-md focus:outline-none hover:bg-card hover:text-muted-foreground hover:cursor-pointer">
+            <button className="bg-card text-muted-foreground border-2 border-border px-3 py-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
               Create
-            </Button>
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            sideOffset={6}
-            className="min-w-[12rem] mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-10"
-          >
-            <DropdownMenuItem
-              onClick={() => router.push("/create")}
-              className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
-            >
-              Animation Maker
+          <DropdownMenuContent sideOffset={6} className="min-w-[12rem] bg-card border-2 border-border rounded-md shadow-lg z-50 p-1">
+            <DropdownMenuItem asChild>
+              <Link 
+                href="/create"
+                className="w-full px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded cursor-pointer block"
+              >
+                Animation Maker
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setUploadOpen(true)}
-              className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
+              className="w-full px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded cursor-pointer"
             >
               Upload
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
         <Link href="/">
-          <Button className="bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer">
+          <button className="bg-card text-muted-foreground border-2 border-border px-3 py-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
             Library
-          </Button>
+          </button>
         </Link>
       </div>
 
       <div className="flex items-center gap-3">
         {/* Sort Dropdown */}
         <div className="relative">
-          <Button
-            variant="ghost"
+          <button
             onClick={handleSortToggle}
-            className="flex flex-row items-center gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer"
+            className="flex items-center gap-2 bg-card text-muted-foreground border-2 border-border px-3 py-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           >
-            {sortOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            Sort: {selectedSort}
-          </Button>
+            <span className="text-sm">Sort: {sortBy}</span>
+            {sortOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+
           {sortOpen && (
-            <div className="absolute top-full right-0 mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-10">
-              <div className="py-1">
-                {["Name", "Date Created", "Last Modified"].map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setSelectedSort(option);
-                      setSortOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+            <div className="absolute top-full right-0 mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-50 p-1">
+              {["Name", "Date Created", "Last Modified"].map(option => (
+                <button
+                  key={option}
+                  onClick={() => {
+                    onSortChange?.(option);
+                    setSortOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded transition-colors"
+                >
+                  {option}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
         {/* Filter Dropdown */}
         <div className="relative">
-          <Button
-            variant="outline"
+          <button
             onClick={handleFilterToggle}
-            className="flex flex-row items-center gap-2 bg-[#1f1f1f] text-[#c3c3c3] border-2 border-[#323232] px-3 py-1 rounded-md focus:outline-none hover:bg-[#1f1f1f] hover:text-[#c3c3c3] hover:cursor-pointer"
+            className="flex items-center gap-2 bg-card text-muted-foreground border-2 border-border px-3 py-1.5 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
           >
-            {filterOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-            Filter: {selectedFilter}
-          </Button>
+            <span className="text-sm">Filter: {filterBy}</span>
+            {filterOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+
           {filterOpen && (
-            <div className="absolute top-full right-0 mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-10">
-              <div className="py-1">
-                {["All", "Favorites", "Recent"].map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      setSelectedFilter(option);
-                      setFilterOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
+            <div className="absolute top-full right-0 mt-2 w-48 bg-card border-2 border-border rounded-md shadow-lg z-50 p-1">
+              {["All", "Favorites", "Custom", "Built-in"].map(option => (
+                <button
+                  key={option}
+                  onClick={() => {
+                    onFilterChange?.(option);
+                    setFilterOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground rounded transition-colors"
+                >
+                  {option}
+                </button>
+              ))}
             </div>
           )}
         </div>
-        {/* Upload Modal rendered when Upload is selected from Create dropdown */}
+
+        {/* Upload Modal */}
         <Modal open={uploadOpen} onClose={() => setUploadOpen(false)}>
           <GifUploadPopup onClose={() => setUploadOpen(false)} />
         </Modal>

@@ -28,6 +28,6 @@ export interface AnimationMetadata {
   id: string;
   name: string;
   description: string;
-  thumbnail?: string;
+  thumbnail?: string | boolean[]; // Can be a URL or a pixel array
   status: "Available" | "Equiped";
 }

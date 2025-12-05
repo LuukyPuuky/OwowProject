@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const { animationEngine } = await import("@/lib/animation-engine");
+    const { animationEngine } = await import("@/lib/canvas/animation-engine");
 
-    const { animationId } = await request.json();
+    const { animationId, customFrames } = await request.json();
 
     if (!animationId) {
       return NextResponse.json(
@@ -13,7 +13,12 @@ export async function POST(request: Request) {
       );
     }
 
-    animationEngine.start(animationId);
+    // Check if this is a custom animation
+    if (animationId.startsWith("custom-") && customFrames) {
+      animationEngine.startCustom(customFrames);
+    } else {
+      animationEngine.start(animationId);
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,11 +1,47 @@
-import { AnimationRenderer, CanvasContext } from "../display/types";
+import { AnimationRenderer } from "../display/types";
+
+// Generate a thumbnail showing pong setup
+const generatePongThumbnail = (): boolean[] => {
+  const width = 80;
+  const height = 20;
+  const pixels = new Array(width * height).fill(false);
+  
+  // Draw left paddle (x=3-4, y=7-13)
+  for (let y = 7; y <= 13; y++) {
+    pixels[y * width + 3] = true;
+    pixels[y * width + 4] = true;
+  }
+  
+  // Draw right paddle (x=75-76, y=7-13)
+  for (let y = 7; y <= 13; y++) {
+    pixels[y * width + 75] = true;
+    pixels[y * width + 76] = true;
+  }
+  
+  // Draw ball in center (3x3)
+  const ballX = 39;
+  const ballY = 9;
+  for (let dy = 0; dy < 3; dy++) {
+    for (let dx = 0; dx < 3; dx++) {
+      pixels[(ballY + dy) * width + (ballX + dx)] = true;
+    }
+  }
+  
+  // Draw center line (dashed)
+  for (let y = 0; y < height; y += 3) {
+    pixels[y * width + 40] = true;
+    if (y + 1 < height) pixels[(y + 1) * width + 40] = true;
+  }
+  
+  return pixels;
+};
 
 export const pongMetadata = {
   id: "pong",
   name: "Pong",
   description: "A classic Pong game animation",
-  thumbnail: "/api/thumbnail/pong",
   status: "Available" as const,
+  thumbnail: generatePongThumbnail(),
 };
 
 interface PongState {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { animations } from "@/lib/animations";
 import { DisplayManager } from "@/lib/display/display-manager";
+import { PREVIEW_WIDTH, PREVIEW_HEIGHT, FPS } from "@/lib/display/settings";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -15,10 +16,10 @@ export async function GET(request: NextRequest) {
   }
 
   // Create a new DisplayManager for this stream
-  // 80x20 is the standard size
-  const width = 80;
-  const height = 20;
-  const fps = 15;
+  // Use preview dimensions for UI display (80x20)
+  const width = PREVIEW_WIDTH;
+  const height = PREVIEW_HEIGHT;
+  const fps = FPS;
   const displayManager = new DisplayManager({ width, height, fps });
   displayManager.setRenderer(animation.renderer);
 
@@ -26,9 +27,8 @@ export async function GET(request: NextRequest) {
     async start(controller) {
       let lastTime = Date.now();
       let elapsedTime = 0;
-      let intervalId: NodeJS.Timeout;
 
-      const tick = async () => {
+      const tick = async (id: NodeJS.Timeout) => {
         try {
           const now = Date.now();
           const deltaTime = now - lastTime;
@@ -44,12 +44,12 @@ export async function GET(request: NextRequest) {
         } catch (error) {
           console.error("Streaming error:", error);
           controller.error(error);
-          clearInterval(intervalId);
+          clearInterval(id);
         }
       };
 
       // Start the loop
-      intervalId = setInterval(tick, 1000 / fps);
+      const intervalId = setInterval(() => tick(intervalId), 1000 / fps);
 
       // Clean up on cancel
       request.signal.addEventListener("abort", () => {
