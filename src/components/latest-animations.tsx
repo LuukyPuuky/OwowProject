@@ -121,10 +121,20 @@ export default function LatestAnimations({
                   <div className="bg-black rounded-md mb-3 overflow-hidden flex items-center justify-center" style={{ height: '80px' }}>
                     {animation.frames ? (
                       <PixelDisplay
+                        key={`${animation.id}-${hoveredId === animation.id ? 'play' : 'static'}`}
                         size="mini"
-                        customFrames={hoveredId === animation.id ? animation.frames : undefined}
+                        // Clone frames so hover toggles always trigger a fresh render cycle
+                        customFrames={
+                          hoveredId === animation.id
+                            ? animation.frames.map((f) => ({ ...f, arr: [...f.arr] }))
+                            : undefined
+                        }
                         autoRefresh={hoveredId === animation.id}
-                        staticFrame={hoveredId !== animation.id && Array.isArray(animation.frames?.[0]?.arr) ? animation.frames[0].arr : undefined}
+                        staticFrame={
+                          hoveredId !== animation.id && Array.isArray(animation.frames?.[0]?.arr)
+                            ? [...animation.frames[0].arr]
+                            : undefined
+                        }
                       />
                     ) : (
                       <div className="text-neutral-600 text-xs">No preview</div>
