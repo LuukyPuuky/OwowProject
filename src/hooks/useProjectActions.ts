@@ -102,9 +102,17 @@ export function useProjectActions({
           status: 'Custom'
         };
         
-        // Use addAnimation if provided, otherwise just save to state
+        // Use addAnimation if provided (e.g., cookie/local state helper)
         if (addAnimation) {
           addAnimation(animationData);
+        } else {
+          // Fallback: persist to localStorage so Library can see it
+          const existing = localStorage.getItem('customAnimations');
+          const customAnimations = existing ? JSON.parse(existing) : [];
+          customAnimations.unshift(animationData);
+          localStorage.setItem('customAnimations', JSON.stringify(customAnimations));
+          // Notify listeners (AnimationLibrary subscribes to this)
+          window.dispatchEvent(new Event('customAnimationsUpdated'));
         }
         
         const savedState = JSON.stringify({ frames, projectName });

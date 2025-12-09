@@ -67,9 +67,17 @@ export function AnimationCard({
     setIsAnimating(false);
   };
 
-  // Always show thumbnail when not animating or when equipped
-  const showStaticThumbnail = (!isAnimating || isEquipped) && Array.isArray(thumbnail);
+  // Always show thumbnail when not animating or when equipped.
+  // Clone the thumbnail so the PixelDisplay effect sees a new reference after hover ends and redraws.
+  const staticThumbnail =
+    (!isAnimating || isEquipped) && Array.isArray(thumbnail)
+      ? [...thumbnail]
+      : undefined;
   const shouldAnimate = isAnimating && !isEquipped;
+  // Force PixelDisplay to remount when switching between animate/static to reset canvas
+  const pixelDisplayKey = shouldAnimate
+    ? `anim-${id}`
+    : `static-${id}-${staticThumbnail ? staticThumbnail.length : 0}`;
 
   return (
     <div
@@ -120,11 +128,12 @@ export function AnimationCard({
           onMouseLeave={handleMouseLeave}
         >
           <PixelDisplay
+            key={pixelDisplayKey}
             size="large"
             animationType={shouldAnimate && !customFrames ? (animationType || id) : undefined}
             customFrames={shouldAnimate ? customFrames : undefined}
             autoRefresh={shouldAnimate}
-            staticFrame={showStaticThumbnail ? thumbnail : undefined}
+            staticFrame={staticThumbnail}
           />
         </div>
 

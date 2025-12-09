@@ -19,6 +19,16 @@ export interface KeyboardShortcutsOptions {
 export function useKeyboardShortcuts(options: KeyboardShortcutsOptions) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // Ignore shortcuts when typing in form fields (e.g., project title input)
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isEditable =
+        target?.isContentEditable ||
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT";
+      if (isEditable) return;
+
       // Space: Play/Pause
       if (e.code === "Space" && options.onPlayPause) {
         e.preventDefault();
