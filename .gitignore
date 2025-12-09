@@ -45,3 +45,4 @@ legacy/
 move_files.bat
 output/
 owowapp/
+node_modules
