@@ -147,10 +147,10 @@ export function AnimationLibrary() {
   }, [equippedId, customAnimations]);
 
   // Get custom frames for equipped animation if it's custom
-  // const equippedCustomFrames = useMemo(() => {
-  //   const customAnim = customAnimations.find(c => c.id === equippedId);
-  //   return customAnim?.frames;
-  // }, [equippedId, customAnimations]);
+  const equippedCustomFrames = useMemo(() => {
+    const customAnim = customAnimations.find(c => c.id === equippedId);
+    return customAnim?.frames;
+  }, [equippedId, customAnimations]);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -164,7 +164,11 @@ export function AnimationLibrary() {
           const newFavorites = new Set(favorites);
           newFavorites.delete(id);
         }}
+        onEquipFavorite={(id) => {
+          handleEquip(id);
+        }}
         equippedAnimation={equippedAnimation}
+        equippedCustomFrames={equippedCustomFrames}
       />
       <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar

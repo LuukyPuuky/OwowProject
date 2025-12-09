@@ -22,7 +22,9 @@ interface SidebarProps {
   onToggleSidebar: () => void;
   favorites?: Set<string>;
   onRemoveFavorite: (id: string) => void;
+  onEquipFavorite?: (id: string) => void;
   equippedAnimation?: AnimationMetadata;
+  equippedCustomFrames?: Array<{ dur: number; arr: boolean[] }>;
 }
 
 export function Sidebar({
@@ -32,7 +34,9 @@ export function Sidebar({
   onToggleSidebar,
   favorites,
   onRemoveFavorite,
+  onEquipFavorite,
   equippedAnimation,
+  equippedCustomFrames,
 }: SidebarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isFavouritesOpen, setIsFavouritesOpen] = useState(false);
@@ -146,7 +150,8 @@ export function Sidebar({
                 <div className="aspect-video bg-black rounded-lg flex items-center justify-center overflow-hidden">
                   <PixelDisplay
                     size="large"
-                    animationType={equippedAnimation?.id}
+                    animationType={equippedCustomFrames ? undefined : equippedAnimation?.id}
+                    customFrames={equippedCustomFrames}
                   />
                 </div>
 
@@ -193,7 +198,8 @@ export function Sidebar({
                     {favoriteAnimations.map((anim) => (
                       <div
                         key={anim.id}
-                        className="flex items-center justify-between border-2 p-4 rounded-xl hover:bg-accent/10 transition-colors"
+                        className="flex items-center justify-between border-2 p-4 rounded-xl hover:bg-accent/10 transition-colors cursor-pointer"
+                        onClick={() => onEquipFavorite?.(anim.id)}
                       >
                         <div className="flex items-center gap-2">
                           <div className="rounded overflow-hidden">
@@ -206,7 +212,10 @@ export function Sidebar({
                           <p>{anim.name}</p>
                         </div>
                         <button
-                          onClick={() => onRemoveFavorite(anim.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRemoveFavorite(anim.id);
+                          }}
                           className="text-muted-foreground transition-colors border-2 border-transparent hover:border-[#323232] hover:rounded-md hover:text-white hover:border-2 hover:cursor-pointer"
                         >
                           <X className="h-4 w-4" />
