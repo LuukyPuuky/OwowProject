@@ -6,6 +6,7 @@ export interface KeyboardShortcutsOptions {
   onNextFrame?: () => void;
   onPrevFrame?: () => void;
   onCopy?: () => void;
+  onCut?: () => void;
   onPaste?: () => void;
   onUndo?: () => void;
   onToolChange?: (tool: Tool) => void;
@@ -50,9 +51,9 @@ export function useKeyboardShortcuts(options: KeyboardShortcutsOptions) {
         options.onCopy();
       }
       // Ctrl+X: Cut
-      if (e.ctrlKey && e.code === "KeyX" && options.onClearSelection && options.hasSelection) {
+      if (e.ctrlKey && e.code === "KeyX" && options.onCut && options.hasSelection) {
         e.preventDefault();
-        options.onClearSelection();
+        options.onCut();
       }
       // Ctrl+V: Paste
       if (e.ctrlKey && e.code === "KeyV" && options.onPaste && options.hasClipboard) {

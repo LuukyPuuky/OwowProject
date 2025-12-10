@@ -69,11 +69,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
               onToolChange("brush");
               onBrushModeChange("paint");
             }}
-            className={`p-2 rounded-md transition-colors ${
-              brushMode === "paint"
+            className={`p-2 rounded-md transition-colors ${brushMode === "paint"
                 ? "bg-white text-black"
                 : "bg-background text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Brush (B)"
           >
             <Paintbrush className="w-5 h-5" />
@@ -85,11 +84,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
               onToolChange("brush");
               onBrushModeChange("erase");
             }}
-            className={`p-2 rounded-md transition-colors ${
-              brushMode === "erase"
+            className={`p-2 rounded-md transition-colors ${brushMode === "erase"
                 ? "bg-white text-black"
                 : "bg-background text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Eraser (X)"
           >
             <Eraser className="w-5 h-5" />
@@ -100,11 +98,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           {/* Line */}
           <button
             onClick={() => onToolChange("line")}
-            className={`p-2 rounded-md transition-colors ${
-              activeTool === "line"
+            className={`p-2 rounded-md transition-colors ${activeTool === "line"
                 ? "bg-white text-black"
                 : "bg-background text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Line (L)"
           >
             <Minus className="w-5 h-5" />
@@ -113,11 +110,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           {/* Ellipse */}
           <button
             onClick={() => onToolChange("ellipse")}
-            className={`p-2 rounded-md transition-colors ${
-              activeTool === "ellipse"
+            className={`p-2 rounded-md transition-colors ${activeTool === "ellipse"
                 ? "bg-white text-black"
                 : "bg-background text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Ellipse (E)"
           >
             <Circle className="w-5 h-5" />
@@ -126,11 +122,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           {/* Rectangle */}
           <button
             onClick={() => onToolChange("rect")}
-            className={`p-2 rounded-md transition-colors ${
-              activeTool === "rect"
+            className={`p-2 rounded-md transition-colors ${activeTool === "rect"
                 ? "bg-white text-black"
                 : "bg-background text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Rectangle (R)"
           >
             <Square className="w-5 h-5" />
@@ -139,11 +134,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           {/* Fill */}
           <button
             onClick={() => onToolChange("fill")}
-            className={`p-2 rounded-md transition-colors ${
-              activeTool === "fill"
+            className={`p-2 rounded-md transition-colors ${activeTool === "fill"
                 ? "bg-white text-black"
                 : "bg-background text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Fill (F)"
           >
             <Droplet className="w-5 h-5" />
@@ -152,11 +146,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           {/* Select */}
           <button
             onClick={() => onToolChange("select")}
-            className={`p-2 rounded-md transition-colors ${
-              activeTool === "select"
+            className={`p-2 rounded-md transition-colors ${activeTool === "select"
                 ? "bg-white text-black"
                 : "bg-background text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Select (S)"
           >
             <RectangleHorizontal className="w-5 h-5" />
@@ -168,12 +161,11 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           <button
             onClick={onCopy}
             disabled={!hasSelection}
-            className={`p-2 rounded-md transition-colors ${
-              !hasSelection
+            className={`p-2 rounded-md transition-colors ${!hasSelection
                 ? "text-neutral-700 cursor-not-allowed"
                 : "text-neutral-300 hover:bg-neutral-800"
-            }`}
-            title="Copy (Ctrl+C)"
+              }`}
+            title={!hasSelection ? "Select an area first to copy" : "Copy (Ctrl+C)"}
           >
             <Copy className="w-5 h-5" />
           </button>
@@ -182,12 +174,11 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           <button
             onClick={onCut}
             disabled={!hasSelection}
-            className={`p-2 rounded-md transition-colors ${
-              !hasSelection
+            className={`p-2 rounded-md transition-colors ${!hasSelection
                 ? "text-neutral-700 cursor-not-allowed"
                 : "text-neutral-300 hover:bg-neutral-800"
-            }`}
-            title="Cut (Ctrl+X)"
+              }`}
+            title={!hasSelection ? "Select an area first to cut" : "Cut (Ctrl+X)"}
           >
             <Scissors className="w-5 h-5" />
           </button>
@@ -196,12 +187,11 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           <button
             onClick={onPaste}
             disabled={!hasClipboard}
-            className={`p-2 rounded-md transition-colors ${
-              !hasClipboard
+            className={`p-2 rounded-md transition-colors ${!hasClipboard
                 ? "text-neutral-700 cursor-not-allowed"
                 : "text-neutral-300 hover:bg-neutral-800"
-            }`}
-            title="Paste (Ctrl+V)"
+              }`}
+            title={!hasClipboard ? "Clipboard is empty" : "Paste (Ctrl+V)"}
           >
             <ClipboardIcon className="w-5 h-5" />
           </button>
@@ -212,11 +202,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           <button
             onClick={onUndo}
             disabled={!canUndo}
-            className={`p-2 rounded-md transition-colors ${
-              !canUndo
+            className={`p-2 rounded-md transition-colors ${!canUndo
                 ? "text-neutral-700 cursor-not-allowed"
                 : "text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Undo (Ctrl+Z)"
           >
             <RotateCcw className="w-5 h-5" />
@@ -226,11 +215,10 @@ export const EditorToolbar = memo<EditorToolbarProps>(
           <button
             onClick={onRedo}
             disabled={!canRedo}
-            className={`p-2 rounded-md transition-colors ${
-              !canRedo
+            className={`p-2 rounded-md transition-colors ${!canRedo
                 ? "text-neutral-700 cursor-not-allowed"
                 : "text-neutral-300 hover:bg-neutral-800"
-            }`}
+              }`}
             title="Redo (Ctrl+Y)"
           >
             <RotateCw className="w-5 h-5" />

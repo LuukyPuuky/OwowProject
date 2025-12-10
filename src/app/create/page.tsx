@@ -38,11 +38,11 @@ export default function CreatePage() {
   const [playing, setPlaying] = useState(false);
   const playTimerRef = useRef<NodeJS.Timeout | null>(null);
   const framesRef = useRef(frames);
-  
+
   useEffect(() => {
     framesRef.current = frames;
   }, [frames]);
-  
+
   const [workingPixels, setWorkingPixels] = useState<boolean[]>(
     new Array(CANVAS_WIDTH * CANVAS_HEIGHT).fill(false)
   );
@@ -145,13 +145,13 @@ export default function CreatePage() {
         if (saved) {
           setCustomAnimations(JSON.parse(saved));
         }
-        
+
         // Load favorites
         const savedFavorites = localStorage.getItem('favorites');
         if (savedFavorites) {
           setFavorites(new Set(JSON.parse(savedFavorites)));
         }
-        
+
         // Load equipped animation ID
         const savedEquipped = localStorage.getItem('equippedAnimationId');
         if (savedEquipped) {
@@ -161,17 +161,17 @@ export default function CreatePage() {
         console.error('Failed to load data:', error);
       }
     };
-    
+
     loadData();
-    
+
     // Listen for changes
     const handleStorageChange = () => {
       loadData();
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('customAnimationsUpdated', handleStorageChange);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('customAnimationsUpdated', handleStorageChange);
@@ -214,11 +214,11 @@ export default function CreatePage() {
 
   useEffect(() => {
     if (playing) return;
-    
+
     const timeoutId = setTimeout(() => {
       saveWorkingPixelsToFrame();
     }, 500);
-    
+
     return () => clearTimeout(timeoutId);
   }, [workingPixels, saveWorkingPixelsToFrame, playing]);
 
@@ -279,7 +279,7 @@ export default function CreatePage() {
   }, [saveWorkingPixelsToFrame]);
 
   const playingRef = useRef(false);
-  
+
   useEffect(() => {
     playingRef.current = playing;
   }, [playing]);
@@ -287,18 +287,18 @@ export default function CreatePage() {
   const play = useCallback(() => {
     if (playingRef.current) return;
     setPlaying(true);
-    
+
     let currentIndex = currentFrameIndex;
-    
+
     const step = () => {
       if (!playingRef.current) return;
-      
+
       currentIndex = (currentIndex + 1) % framesRef.current.length;
       setCurrentFrameIndex(currentIndex);
-      
+
       playTimerRef.current = setTimeout(step, framesRef.current[currentIndex].dur);
     };
-    
+
     playTimerRef.current = setTimeout(step, framesRef.current[currentIndex].dur);
   }, [currentFrameIndex]);
 
@@ -379,7 +379,7 @@ export default function CreatePage() {
         status: customAnim.status as "Available" | "Equiped",
       };
     }
-    
+
     // Otherwise check built-in animations
     const anim = Object.values(animations).find(
       (a) => a.metadata.id === equippedId
@@ -401,7 +401,7 @@ export default function CreatePage() {
     const maxX = Math.max(selection.startX, selection.endX);
     const minY = Math.min(selection.startY, selection.endY);
     const maxY = Math.max(selection.startY, selection.endY);
-    
+
     const width = maxX - minX + 1;
     const height = maxY - minY + 1;
     const pixels: boolean[] = [];
@@ -430,7 +430,7 @@ export default function CreatePage() {
       for (let dx = 0; dx < clipboard.width; dx++) {
         const targetX = pasteX + dx;
         const targetY = pasteY + dy;
-        
+
         if (targetX >= 0 && targetX < CANVAS_WIDTH && targetY >= 0 && targetY < CANVAS_HEIGHT) {
           const sourceIndex = dy * clipboard.width + dx;
           const targetIndex = targetY * CANVAS_WIDTH + targetX;
@@ -457,12 +457,39 @@ export default function CreatePage() {
     }
   }, [history, historyIndex, currentFrameIndex]);
 
+  // Cut selection: Copy then Clear
+  const cutSelection = useCallback(() => {
+    if (!selection) return;
+
+    // 1. Copy
+    copySelection();
+
+    // 2. Clear pixels in selection
+    const minX = Math.min(selection.startX, selection.endX);
+    const maxX = Math.max(selection.startX, selection.endX);
+    const minY = Math.min(selection.startY, selection.endY);
+    const maxY = Math.max(selection.startY, selection.endY);
+
+    const newPixels = [...workingPixels];
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const index = y * CANVAS_WIDTH + x;
+        newPixels[index] = false;
+      }
+    }
+
+    setWorkingPixels(newPixels);
+    pushHistory();
+    setSelection(null);
+  }, [selection, copySelection, workingPixels, pushHistory]);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onPlayPause: togglePlayPause,
     onNextFrame: nextFrame,
     onPrevFrame: prevFrame,
     onCopy: copySelection,
+    onCut: cutSelection,
     onPaste: pasteClipboard,
     onUndo: undo,
     onToolChange: setActiveTool,
@@ -477,11 +504,11 @@ export default function CreatePage() {
     <div className="flex h-screen bg-background text-foreground">
       <Sidebar
         searchQuery=""
-        onSearchChange={() => {}}
+        onSearchChange={() => { }}
         isCollapsed={isSidebarCollapsed}
         onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         favorites={favorites}
-        onRemoveFavorite={() => {}}
+        onRemoveFavorite={() => { }}
         equippedAnimation={equippedAnimation}
       />
 
@@ -510,15 +537,15 @@ export default function CreatePage() {
               }}
               onBrushModeChange={setBrushMode}
               onCopy={copySelection}
-              onCut={() => {}}
+              onCut={cutSelection}
               onPaste={pasteClipboard}
               onUndo={undo}
-              onRedo={() => {}}
+              onRedo={() => { }}
             />
 
             <EditorCanvas
               pixels={displayPixels}
-              onPixelsChange={playing ? () => {} : updateCurrentFramePixels}
+              onPixelsChange={playing ? () => { } : updateCurrentFramePixels}
               brushSize={brushSize}
               brushMode={brushMode}
               brushShape={brushShape}

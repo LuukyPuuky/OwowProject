@@ -49,18 +49,18 @@ export function AnimationLibrary() {
         console.error('Failed to load custom animations:', error);
       }
     };
-    
+
     loadCustomAnimations();
-    
+
     // Listen for storage changes to update when animations are saved
     const handleStorageChange = () => {
       loadCustomAnimations();
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
     // Also listen for custom event from same window
     window.addEventListener('customAnimationsUpdated', handleStorageChange);
-    
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('customAnimationsUpdated', handleStorageChange);
@@ -72,11 +72,11 @@ export function AnimationLibrary() {
       try {
         // Check if this is a custom animation
         const customAnim = customAnimations.find(a => a.id === equippedId);
-        
-        const payload = customAnim 
+
+        const payload = customAnim
           ? { animationId: equippedId, customFrames: customAnim.frames }
           : { animationId: equippedId };
-        
+
         const response = await fetch("/api/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -138,7 +138,7 @@ export function AnimationLibrary() {
         status: customAnim.status as "Available" | "Equiped",
       };
     }
-    
+
     // Otherwise check built-in animations
     const anim = Object.values(animations).find(
       (a) => a.metadata.id === equippedId
@@ -169,6 +169,7 @@ export function AnimationLibrary() {
         }}
         equippedAnimation={equippedAnimation}
         equippedCustomFrames={equippedCustomFrames}
+        customAnimations={customAnimations}
       />
       <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar

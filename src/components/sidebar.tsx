@@ -25,6 +25,13 @@ interface SidebarProps {
   onEquipFavorite?: (id: string) => void;
   equippedAnimation?: AnimationMetadata;
   equippedCustomFrames?: Array<{ dur: number; arr: boolean[] }>;
+  customAnimations?: Array<{
+    id: string;
+    name: string;
+    frames: Array<{ dur: number; arr: boolean[] }>;
+    createdAt: string;
+    status: string;
+  }>;
 }
 
 export function Sidebar({
@@ -37,6 +44,7 @@ export function Sidebar({
   onEquipFavorite,
   equippedAnimation,
   equippedCustomFrames,
+  customAnimations = [],
 }: SidebarProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(true);
   const [isFavouritesOpen, setIsFavouritesOpen] = useState(false);
@@ -45,33 +53,49 @@ export function Sidebar({
   const favoriteAnimations =
     favorites && favorites.size > 0
       ? Array.from(favorites)
-          .map((id) => {
-            const animationObject = Object.values(animations).find(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (a: any) => a.metadata?.id === id
-            );
-            return animationObject?.metadata;
-          })
-          .filter((anim) => anim !== undefined)
-          .filter((anim) =>
-            anim.name.toLowerCase().includes(searchQuery.toLowerCase())
-          )
+        .map((id) => {
+          // Check built-in animations
+          const builtIn = Object.values(animations).find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (a: any) => a.metadata?.id === id
+          );
+          if (builtIn) return builtIn.metadata;
+
+          // Check custom animations
+          const custom = customAnimations.find((c) => c.id === id);
+          if (custom) return custom;
+
+          return undefined;
+        })
+        .filter((anim) => anim !== undefined)
+        .filter((anim) =>
+          anim.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
       : [];
 
   return (
     <aside
-      className={`${
-        isCollapsed ? "w-20" : "w-[400px]"
-      } flex flex-col transition-all duration-300`}
+      className={`${isCollapsed ? "w-20" : "w-[400px]"
+        } flex flex-col transition-all duration-300`}
       style={{ backgroundColor: "#1f1f1f" }}
     >
       {/* Logo */}
-      <div className="p-6">
+      <div className="p-6 flex justify-center">
         {isCollapsed ? (
-          <div className="w-12 h-12 bg-secondary rounded-lg flex items-center justify-center"></div>
+          <div className="w-full flex items-center justify-center overflow-hidden rounded-md">
+            <PixelDisplay
+              size="mini"
+              animationType="logo"
+              autoRefresh={true}
+            />
+          </div>
         ) : (
-          <div className="px-4 py-3 bg-secondary rounded-lg">
-            <span className="text-muted-foreground font-medium">Logo</span>
+          <div className="w-full flex items-center justify-center overflow-hidden rounded-md">
+            <PixelDisplay
+              size="large" // Use large for better visibility in expanded mode? Or scale it up manually
+              animationType="logo"
+              autoRefresh={true}
+            />
           </div>
         )}
       </div>

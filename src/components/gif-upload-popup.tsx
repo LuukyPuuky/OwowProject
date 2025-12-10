@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreVertical, Upload, X, Play } from "lucide-react";
 import { Button } from "@radix-ui/themes";
+import { parseGIF, decompressFrames } from "gifuct-js";
+import { applyFloydSteinbergDithering } from "@/lib/dithering";
+import pica from "pica";
 
 interface GifFile {
   id: string;
@@ -21,6 +24,8 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
   const [status, setStatus] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [useDithering, setUseDithering] = useState(true);
+  const [resizingMethod, setResizingMethod] = useState<"nearest" | "lanczos">("lanczos");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // ✅ CHANGED: Use Next.js API routes instead of external backend
@@ -94,7 +99,7 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
       const json = await res.json();
       setStatus(
         "Upload complete: " +
-          (json.uploaded?.map?.((x: any) => x.name).join(", ") || "ok")
+        (json.uploaded?.map?.((x: any) => x.name).join(", ") || "ok")
       );
 
       // refresh saved gifs from backend so UI shows newly uploaded items
@@ -153,6 +158,7 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
                   src={previewUrl}
                   alt="preview"
                   className="max-h-28 object-contain"
+                  style={{ imageRendering: "pixelated" }}
                 />
               ) : (
                 <svg
@@ -169,15 +175,268 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
             </p>
           </div>
 
+          <div className="flex flex-col space-y-3 mb-2">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="dithering"
+                checked={useDithering}
+                onChange={(e) => setUseDithering(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <label
+                htmlFor="dithering"
+                className="text-sm font-medium leading-none"
+              >
+                Use Dithering
+              </label>
+            </div>
+
+            <div className="flex flex-col space-y-1">
+              <label className="text-sm font-medium">Resizing Method</label>
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="resizing"
+                    value="lanczos"
+                    checked={resizingMethod === "lanczos"}
+                    onChange={() => setResizingMethod("lanczos")}
+                    className="text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm">Lanczos (Smooth)</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="resizing"
+                    value="nearest"
+                    checked={resizingMethod === "nearest"}
+                    onChange={() => setResizingMethod("nearest")}
+                    className="text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm">Nearest (Pixel)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <Button
             variant="outline"
             className="w-full text-muted-foreground"
-            onClick={() => {
-              if (selectedGif) setStatus(`Equipped ${selectedGif.name}`);
-              else setStatus("Select a file from the list or upload one.");
+            onClick={async () => {
+              if (selectedGif && previewUrl) {
+                setStatus(`Processing ${selectedGif.name}...`);
+                try {
+                  const framesToSave: { dur: number; arr: boolean[] }[] = [];
+                  const width = 80;
+                  const height = 20;
+
+                  // 1. Fetch file data
+                  const response = await fetch(previewUrl);
+                  const buffer = await response.arrayBuffer();
+
+                  // Check if it's a GIF
+                  const isGif = selectedGif.name.toLowerCase().endsWith('.gif');
+
+                  if (isGif) {
+                    // --- Animated GIF Handling ---
+                    const gif = parseGIF(buffer);
+                    const frames = decompressFrames(gif, true); // true = build patch
+
+                    // Create canvas for frame composition
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+                    if (!ctx) throw new Error("Could not get canvas context");
+                    ctx.imageSmoothingEnabled = false;
+
+                    // Temporary canvas to draw the raw frame
+                    const tempCanvas = document.createElement("canvas");
+                    // We need to size temp canvas to GIF dimensions
+                    // Note: gifuct-js frames usually have dims from the frame header
+                    // But we'll rely on response-driven sizing or assume resizing to target
+
+                    // Create pica instance once if needed
+                    const picaInstance = resizingMethod === "lanczos" ? pica() : null;
+
+                    for (let i = 0; i < frames.length; i++) {
+                      // Update progress
+                      if (i % 2 === 0 || i === frames.length - 1) { // Update every other frame to reduce React renders
+                        setStatus(`Processing frame ${i + 1}/${frames.length}...`);
+                        // Allow UI to update
+                        await new Promise(r => requestAnimationFrame(r));
+                      }
+
+                      const frame = frames[i];
+
+                      // For simplicity, we create an ImageData from the frame patch
+                      // and draw it to our canvas, resizing it.
+                      // Since frame.patch is raw pixels of the frame dimensions
+                      const patchData = new Uint8ClampedArray(frame.patch);
+                      const frameImageData = new ImageData(
+                        patchData,
+                        frame.dims.width,
+                        frame.dims.height
+                      );
+
+                      // Create a temp canvas for this specific frame patch
+                      tempCanvas.width = frame.dims.width;
+                      tempCanvas.height = frame.dims.height;
+                      const tempCtx = tempCanvas.getContext("2d");
+                      if (tempCtx) { // Ensure tempCtx is not null
+                        tempCtx.putImageData(frameImageData, 0, 0);
+                      }
+
+
+                      // Draw to main canvas (Resizing)
+                      if (i === 0) {
+                        ctx.fillStyle = "black";
+                        ctx.fillRect(0, 0, width, height);
+                      }
+
+                      if (resizingMethod === "lanczos" && picaInstance) {
+                        // Use reusable pica instance
+                        await picaInstance.resize(tempCanvas, canvas, {
+                          quality: 3,
+                          // alpha is handled automatically
+                          unsharpAmount: 0,
+                          unsharpRadius: 0,
+                          unsharpThreshold: 0
+                        });
+                      } else {
+                        // Nearest neighbor / standard canvas draw
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.drawImage(tempCanvas, 0, 0, width, height);
+                      }
+
+                      // Read pixels 
+                      const imageData = ctx.getImageData(0, 0, width, height);
+
+                      if (useDithering) {
+                        applyFloydSteinbergDithering(imageData);
+                      }
+
+                      const pixels = imageData.data;
+                      const boolArray: boolean[] = new Array(width * height).fill(false);
+
+                      for (let p = 0; p < width * height; p++) {
+                        // If dithered, pixels are already 0 or 255. 
+                        // If not dithered, we still need to threshold.
+                        if (useDithering) {
+                          boolArray[p] = pixels[p * 4] > 128;
+                        } else {
+                          const r = pixels[p * 4];
+                          const g = pixels[p * 4 + 1];
+                          const b = pixels[p * 4 + 2];
+                          const brightness = (r + g + b) / 3;
+                          boolArray[p] = brightness > 128;
+                        }
+                      }
+
+                      framesToSave.push({
+                        dur: frame.delay, // delay is in ms
+                        arr: boolArray,
+                      });
+                    }
+                  } else {
+                    // --- Static Image Handling ---
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    // Need to wait for blob to be ready as image
+                    await new Promise((resolve, reject) => {
+                      img.onload = resolve;
+                      img.onerror = reject;
+                      img.src = previewUrl;
+                    });
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) throw new Error("Could not get canvas context");
+
+                    if (resizingMethod === "lanczos") {
+                      // We need a temp canvas for the source image
+                      const tempCanvas = document.createElement("canvas");
+                      tempCanvas.width = img.naturalWidth;
+                      tempCanvas.height = img.naturalHeight;
+                      const tempCtx = tempCanvas.getContext("2d");
+                      if (tempCtx) {
+                        tempCtx.drawImage(img, 0, 0);
+                        const picaInstance = pica();
+                        await picaInstance.resize(tempCanvas, canvas, {
+                          quality: 3,
+                          // alpha is handled automatically
+                        });
+                      }
+                    } else {
+                      ctx.imageSmoothingEnabled = false;
+                      ctx.drawImage(img, 0, 0, width, height);
+                    }
+
+                    const imageData = ctx.getImageData(0, 0, width, height);
+
+                    if (useDithering) {
+                      applyFloydSteinbergDithering(imageData);
+                    }
+
+                    const pixels = imageData.data;
+                    const boolArray: boolean[] = new Array(width * height).fill(false);
+
+                    for (let i = 0; i < width * height; i++) {
+                      if (useDithering) {
+                        boolArray[i] = pixels[i * 4] > 128;
+                      } else {
+                        const r = pixels[i * 4];
+                        const g = pixels[i * 4 + 1];
+                        const b = pixels[i * 4 + 2];
+                        const brightness = (r + g + b) / 3;
+                        boolArray[i] = brightness > 128;
+                      }
+                    }
+
+                    framesToSave.push({ dur: 1000, arr: boolArray });
+                  }
+
+                  if (framesToSave.length === 0) {
+                    throw new Error("No frames extracted");
+                  }
+
+                  // 4. Save to localStorage as Custom Animation
+                  const newAnimation = {
+                    id: `custom-${Date.now()}`,
+                    name: selectedGif.name.replace(/\.[^/.]+$/, ""), // Remove extension
+                    frames: framesToSave,
+                    createdAt: new Date().toISOString(),
+                    status: 'Custom'
+                  };
+
+                  const existing = localStorage.getItem('customAnimations');
+                  const customAnimations = existing ? JSON.parse(existing) : [];
+                  customAnimations.unshift(newAnimation);
+                  localStorage.setItem('customAnimations', JSON.stringify(customAnimations));
+
+                  // Notify app
+                  window.dispatchEvent(new Event('customAnimationsUpdated'));
+
+                  setStatus(`Saved "${newAnimation.name}" with ${framesToSave.length} frames!`);
+
+                  setTimeout(() => {
+                    onClose?.();
+                  }, 1500);
+
+                } catch (err) {
+                  console.error("Failed to process image", err);
+                  setStatus("Failed to process image.");
+                }
+              } else {
+                setStatus("Select a file from the list or upload one.");
+              }
             }}
           >
-            Equip
+            Import to Library
           </Button>
 
           <div className="flex gap-2">
@@ -233,9 +492,8 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
               .map((gif) => (
                 <div
                   key={gif.id}
-                  className={`flex items-center justify-between bg-card/50 border border-border rounded-lg px-4 py-3 cursor-pointer hover:border-border transition-colors ${
-                    selectedGif?.id === gif.id ? "ring-2 ring-primary" : ""
-                  }`}
+                  className={`flex items-center justify-between bg-card/50 border border-border rounded-lg px-4 py-3 cursor-pointer hover:border-border transition-colors ${selectedGif?.id === gif.id ? "ring-2 ring-primary" : ""
+                    }`}
                   onClick={() => handleGifSelect(gif)}
                 >
                   <span className="text-muted-foreground text-sm truncate">
@@ -266,9 +524,9 @@ export default function GifUploadPopup({ onClose, onUploaded }: Props) {
 
           <Button
             className="w-full mt-4 text-muted-foreground"
-            onClick={() => setStatus("Animations saved locally")}
+            onClick={() => setStatus("Select an image to import")}
           >
-            Save Animations
+            Help
           </Button>
         </div>
       </div>

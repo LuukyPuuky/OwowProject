@@ -33,6 +33,7 @@ export function AnimationCard({
   thumbnail,
   onDelete,
   onFavorite,
+  isFavorite,
   isEquipped,
   onEquip,
 }: AnimationCardProps) {
@@ -107,7 +108,7 @@ export function AnimationCard({
                 }}
                 className="w-full text-left px-4 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               >
-                Add to Favorites
+                {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(event) => {
